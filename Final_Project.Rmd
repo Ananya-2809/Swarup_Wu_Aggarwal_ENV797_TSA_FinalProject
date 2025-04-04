@@ -1,0 +1,12 @@
+---
+title: "Final_Project"
+author: "Ananya, Rosie, Sameer"
+date: '2025-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
