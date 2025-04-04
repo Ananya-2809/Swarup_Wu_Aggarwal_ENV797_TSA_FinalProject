@@ -30,7 +30,7 @@ wave_energy <- read.dbf("./Data/wave_energy_period.dbf")
 ```
 
 ```{r}
-#Re-format dataset to be long instead of wide; One data column instead of monthly columns
+#Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
 
 ```
 
