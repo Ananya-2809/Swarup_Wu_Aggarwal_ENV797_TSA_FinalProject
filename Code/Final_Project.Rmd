@@ -1,0 +1,30 @@
+---
+title: "Final_Project"
+author: "Ananya, Rosie, Sameer"
+date: '2025-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Set working directory
+knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+```
+
+```{r}
+#Load libraries
+library(tidyverse)
+library(forecast)
+library(tseries)
+library(sarima)
+library(lubridate)
+library(Kendall)
+library(outliers)
+library(foreign)
+```
+
+```{r}
+
+```
+
