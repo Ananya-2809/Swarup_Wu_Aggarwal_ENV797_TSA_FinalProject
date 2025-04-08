@@ -41,7 +41,12 @@ maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
 ```
 
 ```{r}
-#Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+# Data wrangling needed: create timestamps (sum hourly to daily),
+# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
+# Run original TS, ACF, PACF
+# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
 
+## state space model can eliminate the impact of outliers
 ```
 
