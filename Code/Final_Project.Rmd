@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
 ```
 
-```{r}
+```{r, message= FALSE}
 #Load libraries
 library(tidyverse)
 library(forecast)
@@ -22,11 +22,22 @@ library(lubridate)
 library(Kendall)
 library(outliers)
 library(foreign)
+library(here)
 ```
 
 ```{r}
 #Import wave energy dataset
-wave_energy <- read.dbf("./Data/wave_energy_period.dbf")
+here()
+getwd()
+alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+florida_df <- read.csv("../Data/Florida_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
 ```
 
 ```{r}
