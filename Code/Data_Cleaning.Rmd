@@ -56,43 +56,22 @@ maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
 
 ```{r}
 #Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
-alaska_daily_df <- alaska_df %>% 
+alaska_df <- alaska_df %>% 
               group_by(Year, Month, Day) %>%
               summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
                         daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
                         daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
 
-florida_daily_df <- florida_df %>% 
+florida_df <- florida_df %>% 
               group_by(Year, Month, Day) %>%
               summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
                         daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
                         daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
 
-maine_daily_df <- maine_df %>% 
+maine_df <- maine_df %>% 
               group_by(Year, Month, Day) %>%
               summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
                         daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
                         daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
-```
-
-```{r}
-#Create a column that contains monthly mean energy period, wave power and wave height and compute mean wave energy flux
-alaska_monthly_df <- alaska_daily_df %>% 
-              group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
-
-florida_monthly_df <- florida_daily_df %>% 
-              group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
-
-maine_monthly_df <- maine_daily_df %>% 
-              group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
 ```
 
