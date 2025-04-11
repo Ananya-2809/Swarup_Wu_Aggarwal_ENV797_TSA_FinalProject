@@ -23,6 +23,7 @@ library(Kendall)
 library(outliers)
 library(foreign)
 library(here)
+library(cowplot)
 ```
 
 ```{r}
