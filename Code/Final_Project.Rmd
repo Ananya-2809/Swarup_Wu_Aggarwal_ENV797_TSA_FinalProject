@@ -1,0 +1,118 @@
+---
+title: "Final_Project"
+author: "Ananya, Rosie, Sameer"
+date: '2025-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Set working directory
+knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+```
+
+```{r, message= FALSE}
+#Load libraries
+library(tidyverse)
+library(forecast)
+library(tseries)
+library(sarima)
+library(lubridate)
+library(Kendall)
+library(outliers)
+library(foreign)
+library(here)
+library(cowplot)
+```
+
+```{r}
+#Import datasets
+here()
+getwd()
+alaska_df <- read.csv("./Data/Alaska_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+florida_df <- read.csv("./Data/Florida_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+```
+
+```{r}
+# Data wrangling needed: create timestamps (sum hourly to daily),
+#Sameer comment: Not sure if we can sum, but I can proceed with creating a column that finds the daily average
+
+# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+#Was reading this paper: https://link.springer.com/chapter/10.1007/978-3-319-39889-1_3 and the NOAA explanation on Omni Directional Wave Power. It seems that there is no easy way to compute wave energy flux (so we should not compute it), but that Omni Directional Wave Power is often used as a stand-in as it is correlated with wave energy. The Springer link mentions using wave energy period as another criteria for determining which is a suitable energy site
+
+# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
+# Run original TS, ACF, PACF
+# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
+
+## state space model can eliminate the impact of outliers
+```
+
+```{r}
+#Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_daily_df <- alaska_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+
+florida_daily_df <- florida_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+
+maine_daily_df <- maine_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+```
+
+```{r}
+#Create a column that contains monthly mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_monthly_df <- alaska_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+
+florida_monthly_df <- florida_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+
+maine_monthly_df <- maine_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+```
+
+```{r}
+#Create training and test datasets using the 80-20 rule
+
+#Training
+alaska_monthly_train_df <- alaska_monthly_df %>%
+                          filter(Year < 2004)
+florida_monthly_train_df <- florida_monthly_df %>%
+                          filter(Year < 2004)
+maine_monthly_train_df <- maine_monthly_df %>%
+                          filter(Year < 2004)
+
+alaska_monthly_test_df <- alaska_monthly_df %>%
+                          filter(Year > 2003)
+florida_monthly_test_df <- florida_monthly_df %>%
+                          filter(Year > 2003)
+maine_monthly_test_df <- maine_monthly_df %>%
+                          filter(Year > 2003)
+```
+
