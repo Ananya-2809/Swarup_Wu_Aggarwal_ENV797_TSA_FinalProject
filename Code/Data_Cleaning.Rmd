@@ -80,20 +80,41 @@ maine_daily_df <- maine_df %>%
 #Create a column that contains monthly mean energy period, wave power and wave height and compute mean wave energy flux
 alaska_monthly_df <- alaska_daily_df %>% 
               group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 
 florida_monthly_df <- florida_daily_df %>% 
               group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 
 maine_monthly_df <- maine_daily_df %>% 
               group_by(Year, Month) %>%
-              summarise(monthly_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
-                        monthly_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
-                        monthly_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 ```
+
+```{r}
+#Create training and test datasets using the 80-20 rule
+
+#Training
+alaska_monthly_train_df <- alaska_monthly_df %>%
+                          filter(Year < 2004)
+florida_monthly_train_df <- florida_monthly_df %>%
+                          filter(Year < 2004)
+maine_monthly_train_df <- maine_monthly_df %>%
+                          filter(Year < 2004)
+
+alaska_monthly_test_df <- alaska_monthly_df %>%
+                          filter(Year > 2003)
+florida_monthly_test_df <- florida_monthly_df %>%
+                          filter(Year > 2003)
+maine_monthly_test_df <- maine_monthly_df %>%
+                          filter(Year > 2003)
+```
+
+
 
