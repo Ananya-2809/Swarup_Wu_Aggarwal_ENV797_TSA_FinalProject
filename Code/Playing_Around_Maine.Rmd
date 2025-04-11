@@ -1,0 +1,177 @@
+---
+title: "Final_Project"
+author: "Ananya, Rosie, Sameer"
+date: '2025-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Set working directory
+knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+```
+
+```{r, message= FALSE}
+#Load libraries
+library(tidyverse)
+library(forecast)
+library(tseries)
+library(sarima)
+library(lubridate)
+library(Kendall)
+library(outliers)
+library(foreign)
+library(here)
+library(ggplot2)
+library(cowplot)
+```
+
+```{r}
+#Import datasets
+here()
+getwd()
+alaska_raw <- read.csv("../Data/Alaska_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+florida_raw <- read.csv("../Data/Florida_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+maine_raw <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+```
+
+```{r}
+# Data wrangling needed: create timestamps (sum hourly to daily),
+#Sameer comment: Not sure if we can sum, but I can proceed with creating a column that finds the daily average
+
+# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+#Was reading this paper: https://link.springer.com/chapter/10.1007/978-3-319-39889-1_3 and the NOAA explanation on Omni Directional Wave Power. It seems that there is no easy way to compute wave energy flux (so we should not compute it), but that Omni Directional Wave Power is often used as a stand-in as it is correlated with wave energy. The Springer link mentions using wave energy period as another criteria for determining which is a suitable energy site
+
+# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
+# Run original TS, ACF, PACF
+# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
+
+## state space model can eliminate the impact of outliers
+```
+
+```{r}
+#Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_df <- alaska_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+
+florida_df <- florida_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+
+maine_df <- maine_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+```
+
+playing around now - 
+
+```{r}
+#creating a date column
+maine_df <- maine_df %>%
+  mutate(date = make_date(Year, Month, Day))
+
+maine_power <- maine_df %>%
+  select(date, daily_mean_wave_power)
+
+summary(maine_power) #third quartile is less than mean?? how should we deal with outliers?
+any(is.na(maine_power))
+
+me_power_plot <- ggplot(maine_power, aes(x = date, y = daily_mean_wave_power)) +
+  geom_line(color = "blue") +
+  labs(title = "Daily Mean Wave Power",
+       y = "W/m", x = "Date")
+
+me_power_dist <- ggplot(maine_power, aes(x = daily_mean_wave_power)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") +
+  labs(title = "Distribution of Daily Mean Wave Power", x = "W/m", y = "Frequency")
+#heavily right-skewed distribution?
+#mean is 16.20 - should we like remove some extreme outliers? above 500?
+
+plot_grid(me_power_plot, me_power_dist, nrow = 2)
+
+
+```
+
+dealing with time series
+
+```{r, fig.height = 6}
+me_power_ts <- msts(maine_df$daily_mean_wave_power, 
+                    seasonal.periods =c(7,365.25),
+                           start=c(1979,1,2)) #data starting Jan 2, 1979
+summary(me_power_ts)
+
+me_power_decomp <- mstl(me_power_ts)
+plot(me_power_decomp)
+#strong seasonality.. but no significant trend seen
+
+me_power_acf <- ggAcf(me_power_ts, lag.max = 60) + ggtitle("ACF of Wave Power in Maine")
+me_power_pacf <- ggPacf(me_power_ts, lag.max = 60) + ggtitle("PACF of Wave Power in Maine")
+plot_grid(me_power_acf, me_power_pacf, nrow = 2)
+#ACF shows some seasonality
+
+```
+
+
+```{r}
+#training data - 1979 to 2009
+me_power_train <- window(me_power_ts, end = c(2009, 365))
+
+#testing on 2010 data
+me_power_test <- window(me_power_ts, start = c(2010, 1))
+
+forecast_horizon <- length(me_power_test)
+```
+
+
+diving into advanced forecasting models from assignment #9
+
+```{r, fig.width = 10}
+
+#model: STL + ETS
+me_power_ets <-  stlf(me_power_train, h = forecast_horizon)
+autoplot(me_power_ets) + ylab("Wave Power in Maine")
+
+autoplot(me_power_ts) +
+  autolayer(me_power_ets, series="STL + ETS",PI=FALSE) +
+  ylab("Wave Power")
+
+#how to not have the values go negative?
+
+```
+
+```{r}
+
+#model: ARIMA + FOURIER
+me_power_arfour_fit <-  auto.arima(me_power_train, seasonal = FALSE, lambda = 0,
+                                      xreg = fourier(me_power_train, K = c(2,12)))
+
+me_power_arfour_fore <- forecast(me_power_arfour_fit,
+                                 xreg = fourier(me_power_train, K = c(2,12), h = forecast_horizon),
+                                 h = forecast_horizon)
+
+autoplot(me_power_arfour_fore) + ylab("Wave Power")
+
+#Plot model + observed data
+autoplot(me_power_ts) +
+  autolayer(me_power_arfour_fore, series="ARIMA_FOURIER",PI=FALSE) +
+  ylab("Wave Power")
+
+```
+

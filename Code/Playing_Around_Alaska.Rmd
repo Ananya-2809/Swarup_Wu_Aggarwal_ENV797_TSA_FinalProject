@@ -1,0 +1,236 @@
+---
+title: "Final_Project"
+author: "Ananya, Rosie, Sameer"
+date: '2025-04-04'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Set working directory
+knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+```
+
+```{r, message= FALSE}
+#Load libraries
+library(tidyverse)
+library(forecast)
+library(tseries)
+library(sarima)
+library(lubridate)
+library(Kendall)
+library(outliers)
+library(foreign)
+library(here)
+library(ggplot2)
+library(cowplot)
+```
+
+```{r}
+#Import datasets
+here()
+getwd()
+alaska_raw <- read.csv("../Data/Alaska_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+florida_raw <- read.csv("../Data/Florida_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+maine_raw <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+```
+
+```{r}
+# Data wrangling needed: create timestamps (sum hourly to daily),
+#Sameer comment: Not sure if we can sum, but I can proceed with creating a column that finds the daily average
+
+# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+#Was reading this paper: https://link.springer.com/chapter/10.1007/978-3-319-39889-1_3 and the NOAA explanation on Omni Directional Wave Power. It seems that there is no easy way to compute wave energy flux (so we should not compute it), but that Omni Directional Wave Power is often used as a stand-in as it is correlated with wave energy. The Springer link mentions using wave energy period as another criteria for determining which is a suitable energy site
+
+# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
+# Run original TS, ACF, PACF
+# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
+
+## state space model can eliminate the impact of outliers
+```
+
+```{r}
+#Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_df <- alaska_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+
+florida_df <- florida_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+
+maine_df <- maine_raw %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE),
+                        .groups = "drop")
+```
+
+playing around now - 
+
+```{r}
+#creating a date column
+alaska_df <- alaska_df %>%
+  mutate(date = make_date(Year, Month, Day))
+
+alaska_power <- alaska_df %>%
+  select(date, daily_mean_wave_power)
+
+summary(alaska_power) #third quartile is less than mean?? how should we deal with outliers?
+any(is.na(alaska_power))
+
+ak_power_plot <- ggplot(alaska_power, aes(x = date, y = daily_mean_wave_power)) +
+  geom_line(color = "blue") +
+  labs(title = "Daily Mean Wave Power",
+       y = "W/m", x = "Date")
+
+ak_power_dist <- ggplot(alaska_power, aes(x = daily_mean_wave_power)) +
+  geom_histogram(binwidth = 0.5, fill = "blue", color = "black") +
+  labs(title = "Distribution of Daily Mean Wave Power", x = "W/m", y = "Frequency")
+#heavily right-skewed distribution?
+#mean is 16.20 - should we like remove some extreme outliers? above 500?
+
+plot_grid(ak_power_plot, ak_power_dist, nrow = 2)
+
+
+```
+
+dealing with time series
+
+```{r, fig.height = 6}
+ak_power_ts <- ts(alaska_df$daily_mean_wave_power, start = c(1979, 7), frequency = 365) #data starting Jan 7, 1979
+summary(ak_power_ts)
+
+ak_power_decomp <- decompose(ak_power_ts)
+plot(ak_power_decomp)
+#strong seasonality.. but no significant trend seen
+
+ak_power_acf <- ggAcf(ak_power_ts, lag.max = 60) + ggtitle("ACF of Wave Power in Alaska")
+ak_power_pacf <- ggPacf(ak_power_ts, lag.max = 60) + ggtitle("PACF of Wave Power in Alaska")
+plot_grid(ak_power_acf, ak_power_pacf, nrow = 2)
+#short-term autocorrelation; PACF - current value primarily dependent on immediately preceding value 
+#AR(1) model? sharp cut-off after lag 1 in PACF plot -> p=1
+
+
+adf.test(ak_power_ts)
+#data is stationary - yay! No differencing needed
+
+```
+
+deseasoning the data
+
+```{r}
+
+ak_power_deseas <- seasadj(ak_power_decomp)
+ak_power_deseas_plot <- autoplot(ak_power_deseas)+
+  ggtitle("Deseasoned Wave Power in Alaska (1979-2010)") +
+  xlab("Date") + ylab("W/m")
+
+ak_power_deseas_acf <- ggAcf(ak_power_deseas, lag.max = 60) + ggtitle("ACF of Deseasoned Wave Power in Alaska")
+ak_power_deseas_pacf <- ggPacf(ak_power_deseas, lag.max = 60) + ggtitle("PACF of Deseasoned Wave Power in Alaska")
+plot_grid(ak_power_deseas_acf, ak_power_deseas_pacf, nrow = 2)
+
+#similar results as before - what does this mean? no seasonality?
+#do we need to deseason the data?
+
+```
+
+```{r}
+#training data - 1979 to 2009
+ak_power_train <- window(ak_power_ts, end = c(2009, 365))
+
+#testing on 2010 data
+ak_power_test <- window(ak_power_ts, start = c(2010, 1))
+```
+
+
+forecasting - basic methods
+
+```{r}
+#ARIMA model
+p <- 1
+d <- 0
+q <- 0
+
+cat("Estimated ARIMA order: ARIMA(", p, ",", d, ",", q, ")\n")
+
+ak_power_arima <- Arima(ak_power_train, order = c(p,d,q), include.mean = TRUE)
+print(ak_power_arima)
+checkresiduals(ak_power_arima)
+
+```
+
+
+```{r}
+
+ak_power_auto_arima <- auto.arima(ak_power_train, seasonal = TRUE)
+print(ak_power_auto_arima)
+
+#how is the order 3?
+
+```
+
+forecasting and testing
+
+```{r}
+
+forecast_horizon <- length(ak_power_test)
+ak_power_arima_forecast <- forecast(ak_power_auto_arima, h = forecast_horizon)
+autoplot(ak_power_arima_forecast)
+# + autolayer(ak_power_test, series = "Test Data", color = "red")
+checkresiduals(ak_power_arima_forecast)
+
+#it just flatlined on me.. great, lol!
+
+
+```
+
+
+trying other models
+
+```{r}
+
+#taking from Assignment #7
+
+#Model 1: Arithmetic mean on original data
+ak_power_meanf <- meanf(y = ak_power_train, h = forecast_horizon)
+autoplot(ak_power_meanf)
+checkresiduals(ak_power_meanf)
+
+#Model 3: Seasonal naive on original data
+ak_power_snaive <- snaive(ak_power_train, h = forecast_horizon)
+autoplot(ak_power_snaive)
+checkresiduals(ak_power_snaive)
+#performing the best, well, performing as of now :P !
+
+```
+
+
+```{r, fig.width = 10}
+
+autoplot(ak_power_ts) +
+    autolayer(ak_power_arima_forecast,series="SARIMA",PI=FALSE) +
+    autolayer(ak_power_meanf,series="Arithmetic Mean",PI=FALSE) +
+    autolayer(ak_power_snaive,series="Seasonal Naive",PI=FALSE) +
+    ylab("Wave Power: W/m") +
+    xlab("Date") +
+    labs(col="Models")
+
+```
+
+
+
