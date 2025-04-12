@@ -24,6 +24,7 @@ library(outliers)
 library(foreign)
 library(here)
 library(cowplot)
+library(kableExtra)
 ```
 
 ```{r}
@@ -135,7 +136,7 @@ Moreover, the ACF plot for the daily wave power drops sharply after lag 1, sugge
 
 
 ```{r}
-#Create training and test datasets using the 80-20 rule
+#Create training and test datasets using the 80-20 rule (for monthly data only)
 
 #Training
 alaska_monthly_train_df <- alaska_monthly_df %>%
@@ -154,7 +155,99 @@ maine_monthly_test_df <- maine_monthly_df %>%
 ```
 
 
+```{r}
+
+#converting to time series object
+maine_ts_train <- ts(maine_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(maine_monthly_train_df$Year), min(maine_monthly_train_df$Month)),
+                     frequency = 12)
+
+maine_ts_test <- ts(maine_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(maine_monthly_test_df$Year), min(maine_monthly_test_df$Month)),
+                     frequency = 12)
+
+maine_train_plot <- autoplot(maine_ts_train) +
+  ggtitle("Monthly Mean Wave Power - Maine (Training)") +
+  xlab("Year") + ylab("Wave Power (W/m)")
+plot(maine_train_plot)
+
+#plotting acf and pacf
+maine_train_acf <- ggAcf(maine_ts_train) + ggtitle("ACF - Monthly Wave Power (Maine)")
+maine_train_pacf <- ggPacf(maine_ts_train) + ggtitle("PACF - Monthly Wave Power (Maine)")
+plot_grid(maine_train_acf, maine_train_pacf, ncol = 1)
+
+#decomposing the time series
+maine_train_decomp <- decompose(maine_ts_train)
+autoplot(maine_train_decomp)
+
+```
 
 
+```{r}
+#start of the forecasting
 
+fore_h = length(maine_ts_test) #forecast horizon
+
+#model 1: seasonal naive on original data (base model)
+maine_snaive <- snaive(maine_ts_train, h = fore_h)
+autoplot(maine_snaive) + ggtitle("SNAIVE - Maine")
+
+
+#model 2: SARIMA on original data
+maine_sarima_fit <- auto.arima(maine_ts_train)
+print(maine_sarima_fit)
+
+maine_sarima_fore <- forecast(object = maine_train_sarima_fit, h = fore_h)
+autoplot(maine_sarima_fore) + ggtitle("SARIMA - Maine")
+
+
+#model 3: STL decomposition + ETS
+maine_stlf_ets <- stlf(maine_ts_train, h = fore_h, method = "ets")
+autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
+
+
+#model 4: ARIMA + Fourier terms
+k <- 4  #number of Fourier terms kept at 4, as 5 onwards, the RMSE started increasing
+
+maine_arima_fit <- auto.arima(maine_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(maine_ts_train, 
+                                          K = k))
+
+maine_arima_fore <- forecast(maine_arima_fit,
+                           xreg=fourier(maine_ts_train,
+                                        K = k,
+                                        h = fore_h),
+                           h = fore_h)
+autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
+
+
+```
+
+
+```{r}
+#summarizing the scores/results from the above models
+SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)  
+SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
+ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
+ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
+
+scores <- as.data.frame(
+  rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores)
+  )
+row.names(scores) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+
+```
 
