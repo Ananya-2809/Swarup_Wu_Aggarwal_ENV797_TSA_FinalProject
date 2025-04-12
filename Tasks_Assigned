@@ -1,0 +1,9 @@
+Ananya - 
+1. do the initial analysis on daily vs monthly data, and see why we want to go with the monthly data
+2. models - ARIMA, ARIMA + Fourier, ETS+STL
+
+Rosie - 
+1. models - State space models - SSES, SS StructTS
+
+Sameer - 
+1. models - TBATS, Neural Network
