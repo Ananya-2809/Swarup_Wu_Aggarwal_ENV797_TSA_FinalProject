@@ -30,13 +30,13 @@ library(cowplot)
 #Import datasets
 here()
 getwd()
-alaska_df <- read.csv("./Data/Alaska_combined_output.csv",
+alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-florida_df <- read.csv("./Data/Florida_combined_output.csv",
+florida_df <- read.csv("../Data/Florida_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
+maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
                       skip = 2,
                       header = TRUE)
 ```
@@ -98,6 +98,43 @@ maine_monthly_df <- maine_daily_df %>%
 ```
 
 ```{r}
+#doing some analysis on the daily and monthly time series to decide what level of granularity might be better for forecasting
+#things to look at - volatility (noise), trend/seasonality, ACF patterns
+#starting with Maine as our "main" site hehe!
+
+maine_daily_df <- maine_daily_df %>%
+  mutate(date = make_date(Year, Month, Day))
+
+maine_monthly_df <- maine_monthly_df %>%
+  mutate(date = make_date(Year, Month, 1))
+
+#initial plots
+maine_d_plot <- ggplot(maine_daily_df, aes(x = date, y = daily_mean_wave_power)) +
+  geom_line(color = "steelblue", alpha = 0.5) +
+  labs(title = "Daily Mean Wave Power - Maine", y = "Wave Power (W/m)", x = "") +
+  theme_minimal()
+
+maine_m_plot <- ggplot(maine_monthly_df, aes(x = date, y = monthly_mean_wave_power)) +
+  geom_line(color = "darkgreen") +
+  labs(title = "Monthly Mean Wave Power - Maine", y = "Wave Power (W/m)", x = "") +
+  theme_minimal()
+
+plot_grid(maine_d_plot, maine_m_plot, ncol = 1)
+
+
+#acf plots
+maine_d_acf <- ggAcf(maine_daily_df$daily_mean_wave_power) + ggtitle("ACF - Daily Wave Power (Maine)")
+maine_m_acf <- ggAcf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("ACF - Monthly Wave Power (Maine)")
+plot_grid(maine_d_acf, maine_m_acf, ncol = 1)
+
+
+```
+
+> Observations: Daily mean wave power appears to be highly volatile and masked by noise, which might make it harder to model directly. On the other hand, monthly mean wave power shows a clear seasonal structure with regular peaks and dips, and consistent annual cycles across decades. 
+Moreover, the ACF plot for the daily wave power drops sharply after lag 1, suggesting that past daily values don't carry much signal for future values. For the monthly wave power, the ACF plot shows strong seasonality with the wave pattern. The autocorrelation persists over time, which will be ideal for ARIMA/SARIMA.
+
+
+```{r}
 #Create training and test datasets using the 80-20 rule
 
 #Training
@@ -115,6 +152,9 @@ florida_monthly_test_df <- florida_monthly_df %>%
 maine_monthly_test_df <- maine_monthly_df %>%
                           filter(Year > 2003)
 ```
+
+
+
 
 
 
