@@ -16,7 +16,7 @@ knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/
 #Load libraries
 library(tidyverse)
 library(forecast)
-library(tseries)
+#library(tseries)
 library(sarima)
 library(lubridate)
 library(Kendall)
@@ -25,6 +25,7 @@ library(foreign)
 library(here)
 library(cowplot)
 library(kableExtra)
+library(smooth)
 ```
 
 ```{r}
@@ -197,7 +198,7 @@ autoplot(maine_snaive) + ggtitle("SNAIVE - Maine")
 maine_sarima_fit <- auto.arima(maine_ts_train)
 print(maine_sarima_fit)
 
-maine_sarima_fore <- forecast(object = maine_train_sarima_fit, h = fore_h)
+maine_sarima_fore <- forecast(object = maine_sarima_fit, h = fore_h)
 autoplot(maine_sarima_fore) + ggtitle("SARIMA - Maine")
 
 
@@ -222,8 +223,59 @@ maine_arima_fore <- forecast(maine_arima_fit,
                            h = fore_h)
 autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 
-
 ```
+
+```{r}
+n_for <- 11 
+#play with this, change to 12, 23, 2 and check if the best model is still the same
+maine_SSES <- es(maine_ts_train, model="ZZZ", h=n_for, holdout=FALSE)
+checkresiduals(maine_SSES)
+# forecast and plot
+maine_SSES_fore <- forecast(SSES_seas,h=n_for)
+plot(maine_SSES_fore)
+```
+Model own interpretation:
+- Residuals kind of fluctuate around 0, but the variance is not very constant, but variance have slightly higher value fluctuations > 0., so some inconsistency.Potential minor Outliers
+- ACF plot: no significant spikes outside of the blue lines, which is good
+- Histogram of residuals display rough normal distribution around 0, which is good.
+- Ljung-Box test: p-value (0.79) much greater than 0.05, so residuals are white noise, good. 
+
+
+```{r}
+SS_seas <- StructTS(maine_ts_train,
+                    type="BSM",fixed=c(0.1,0.01,0.3,NA)) 
+
+#this function has convergence issues
+checkresiduals(SS_seas)
+
+#Generating forecasts
+maine_SS_for <- forecast(SS_seas,h=n_for)
+plot(maine_SS_for)
+```
+This odel without changes from Module 10 was bad, strong autocorrelation and covergence issue, let's change:
+```{r}
+maine_ts_train_diff <- diff(maine_ts_train, differences = 1)
+SS_seas <- StructTS(maine_ts_train_diff, type = "BSM", , fixed = c(NA, NA, NA, NA))  # Let all parameters vary
+checkresiduals(SS_seas)
+
+#Generating forecasts
+maine_SS_for <- forecast(SS_seas,h=n_for)
+plot(maine_SS_for)
+```
+Revised model: Residual plot improvements (no trends/outliers) suggest:
+
+- The model handles mean and variance reasonably well.
+
+- The seasonal/trend components are likely adequate.
+
+ACF spikes + low p-value imply:
+
+- Short-term dependencies remain unmodeled (e.g., AR/MA effects).
+
+- Seasonal harmonics (higher-frequency cycles) may be missed.
+
+Next steps could be:
+- combine the StructTS model with arima layer
 
 
 ```{r}
@@ -232,11 +284,15 @@ SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)
 SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
 ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
 ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
+es_scores <- accuracy(maine_SSES_fore$mean,maine_ts_test)
+StructTS_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
+
 
 scores <- as.data.frame(
-  rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores)
+  rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores, es_scores, StructTS_scores)
   )
-row.names(scores) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier")
+row.names(scores) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier", 
+                       "ES", "StructTS")
 
 #choose model with lowest RMSE
 best_model_index <- which.min(scores[,"RMSE"])
@@ -250,4 +306,5 @@ kbl(scores,
   kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
 
 ```
+
 
