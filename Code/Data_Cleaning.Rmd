@@ -31,13 +31,13 @@ library(kableExtra)
 #Import datasets
 here()
 getwd()
-alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
+alaska_df <- read.csv("./Data/Alaska_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-florida_df <- read.csv("../Data/Florida_combined_output.csv",
+florida_df <- read.csv("./Data/Florida_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
                       skip = 2,
                       header = TRUE)
 ```
@@ -251,3 +251,69 @@ kbl(scores,
 
 ```
 
+```{r}
+#TBATS Model
+maine_train_tbats_fit <- tbats(maine_ts_train)
+
+tbats_forecast <- forecast(maine_train_tbats_fit, h=fore_h)
+
+#Plot foresting results
+autoplot(tbats_forecast) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(tbats_forecast, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Maine")
+```
+
+```{r}
+#NNETAR Model
+
+maine_train_NN_fit <- nnetar(maine_ts_train,
+                 p=4,
+                 P=1,
+                 xreg=fourier(maine_ts_train, K = 4))
+
+NN_forecast <- forecast(maine_train_NN_fit, 
+                   h=fore_h,
+                   xreg=fourier(maine_ts_train, 
+                                          K = 4, h=fore_h))
+
+
+#Plot foresting results
+autoplot(NN_forecast) +
+  ylab("Monthly Tidal Power") 
+
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(NN_forecast, series="Neural Network",PI=FALSE)+
+  ylab("Monthly Tidal Power") 
+```
+
+```{r}
+#summarizing the scores/results from the above models
+TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
+NN_scores <- accuracy(NN_forecast$mean,maine_ts_test)  
+
+scores <- as.data.frame(
+  rbind(TBATS_scores, NN_scores)
+  )
+row.names(scores) <- c("TBATS", "NN")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+
+```
+
+>Observations: Both TBATS and NN under-forecast monthly tidal power. TBATS performs slightly better but both models do not seem to capture the seasonality of the monthly tidal power. For NN, some tweaking can be done to see if changing the lag can better capture the seasonality. 
