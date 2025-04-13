@@ -286,7 +286,8 @@ ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)
 ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
 es_scores <- accuracy(maine_SSES_fore$mean,maine_ts_test)
 StructTS_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
-
+TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
+NN_scores <- accuracy(NN_forecast$mean,maine_ts_test) 
 
 scores <- as.data.frame(
   rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores, es_scores, StructTS_scores)
@@ -307,7 +308,6 @@ kbl(scores,
 
 ```
 
-<<<<<<< HEAD
 ```{r}
 #TBATS Model
 maine_train_tbats_fit <- tbats(maine_ts_train)
@@ -350,30 +350,4 @@ autoplot(maine_ts_train) +
   ylab("Monthly Tidal Power") 
 ```
 
-```{r}
-#summarizing the scores/results from the above models
-TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
-NN_scores <- accuracy(NN_forecast$mean,maine_ts_test)  
-
-scores <- as.data.frame(
-  rbind(TBATS_scores, NN_scores)
-  )
-row.names(scores) <- c("TBATS", "NN")
-
-#choose model with lowest RMSE
-best_model_index <- which.min(scores[,"RMSE"])
-cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
-
-kbl(scores, 
-      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
-      digits = array(5,ncol(scores))) %>%
-  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
-  #highlight model with lowest RMSE
-  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
-
-```
-
 >Observations: Both TBATS and NN under-forecast monthly tidal power. TBATS performs slightly better but both models do not seem to capture the seasonality of the monthly tidal power. For NN, some tweaking can be done to see if changing the lag can better capture the seasonality. 
-=======
-
->>>>>>> 48bf40354a4e4ca8832d072aa86046a8a511c176
