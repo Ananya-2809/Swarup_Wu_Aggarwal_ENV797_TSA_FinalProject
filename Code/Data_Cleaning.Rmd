@@ -26,6 +26,7 @@ library(here)
 library(cowplot)
 library(kableExtra)
 library(smooth)
+library(tseries)
 ```
 
 ```{r}
@@ -99,6 +100,9 @@ maine_monthly_df <- maine_daily_df %>%
                         monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 ```
 
+#Maine
+###We will use Maine to test our various time series models. Using accuracy metrics and plots we will choose the 3 best models and forecast mean monthly wave power for Alaska and Florida.
+
 ```{r}
 #doing some analysis on the daily and monthly time series to decide what level of granularity might be better for forecasting
 #things to look at - volatility (noise), trend/seasonality, ACF patterns
@@ -157,7 +161,6 @@ maine_monthly_test_df <- maine_monthly_df %>%
 
 
 ```{r}
-
 #converting to time series object
 maine_ts_train <- ts(maine_monthly_train_df$monthly_mean_wave_power,
                      start = c(min(maine_monthly_train_df$Year), min(maine_monthly_train_df$Month)),
@@ -352,3 +355,88 @@ kbl(scores,
   kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
 
 ```
+
+#Alaska
+
+###Start by creating monthly time series objects for Alaska and plotting ACF and PACF plots
+```{r}
+#converting to time series object
+alaska_ts_train <- ts(alaska_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(alaska_monthly_train_df$Year), min(alaska_monthly_train_df$Month)),
+                     frequency = 12)
+
+alaska_ts_test <- ts(alaska_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(alaska_monthly_test_df$Year), min(alaska_monthly_test_df$Month)),
+                     frequency = 12)
+
+alaska_train_plot <- autoplot(alaska_ts_train) +
+  ggtitle("Monthly Mean Wave Power - alaska (Training)") +
+  xlab("Year") + ylab("Wave Power (W/m)")
+plot(alaska_train_plot)
+
+#plotting acf and pacf
+alaska_train_acf <- ggAcf(alaska_ts_train) + ggtitle("ACF - Monthly Wave Power (Alaska)")
+alaska_train_pacf <- ggPacf(alaska_ts_train) + ggtitle("PACF - Monthly Wave Power (Alaska)")
+plot_grid(alaska_train_acf, alaska_train_pacf, ncol = 1)
+
+#decomposing the time series
+alaska_train_decomp <- decompose(alaska_ts_train)
+autoplot(alaska_train_decomp)
+
+```
+
+>Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal autoregressive component with a period of 12 months (SAR(1) with a seasonal lag of 12).
+
+```{r}
+adf_alaska <- adf.test(alaska_ts_train)
+# Print the results
+print(adf_alaska)
+```
+
+>Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.
+
+###Proceed with using our 3 chosen models on Alaska
+```{r}
+fore_h <- length(alaska_ts_test)
+
+#model 1: STL decomposition + ETS
+alaska_stlf_ets <- stlf(alaska_ts_train, h = fore_h, method = "ets")
+autoplot(alaska_stlf_ets) + ggtitle("STL + ETS Forecast - Alaska")
+```
+
+#model 2: ARIMA + Fourier terms
+k <- 4  #number of Fourier terms kept at 4, as 5 onwards, the RMSE started increasing
+```{r}
+#Model 2: Arima + Fourier
+k <- 4
+alaska_arima_fit <- auto.arima(alaska_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(alaska_ts_train, 
+                                          K = k))
+
+alaska_arima_fore <- forecast(alaska_arima_fit,
+                           xreg=fourier(alaska_ts_train,
+                                        K = k,
+                                        h = fore_h),
+                           h = fore_h)
+autoplot(alaska_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Alaska")
+```
+
+```{r}
+#Model 3: TBATS
+alaska_train_tbats_fit <- tbats(alaska_ts_train)
+
+tbats_forecast <- forecast(alaska_train_tbats_fit, h=fore_h)
+
+#Plot foresting results
+autoplot(tbats_forecast) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(alaska_ts_train) +
+  autolayer(tbats_forecast, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Alaska")
+```
+
