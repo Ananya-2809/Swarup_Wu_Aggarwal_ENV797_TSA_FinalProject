@@ -32,13 +32,13 @@ library(smooth)
 #Import datasets
 here()
 getwd()
-alaska_df <- read.csv("./Data/Alaska_combined_output.csv",
+alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-florida_df <- read.csv("./Data/Florida_combined_output.csv",
+florida_df <- read.csv("../Data/Florida_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
+maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
                       skip = 2,
                       header = TRUE)
 ```
@@ -277,37 +277,6 @@ ACF spikes + low p-value imply:
 Next steps could be:
 - combine the StructTS model with arima layer
 
-
-```{r}
-#summarizing the scores/results from the above models
-SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)  
-SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
-ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
-ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
-es_scores <- accuracy(maine_SSES_fore$mean,maine_ts_test)
-StructTS_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
-TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
-NN_scores <- accuracy(NN_forecast$mean,maine_ts_test) 
-
-scores <- as.data.frame(
-  rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores, es_scores, StructTS_scores)
-  )
-row.names(scores) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier", 
-                       "ES", "StructTS")
-
-#choose model with lowest RMSE
-best_model_index <- which.min(scores[,"RMSE"])
-cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
-
-kbl(scores, 
-      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
-      digits = array(5,ncol(scores))) %>%
-  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
-  #highlight model with lowest RMSE
-  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
-
-```
-
 ```{r}
 #TBATS Model
 maine_train_tbats_fit <- tbats(maine_ts_train)
@@ -351,3 +320,35 @@ autoplot(maine_ts_train) +
 ```
 
 >Observations: Both TBATS and NN under-forecast monthly tidal power. TBATS performs slightly better but both models do not seem to capture the seasonality of the monthly tidal power. For NN, some tweaking can be done to see if changing the lag can better capture the seasonality. 
+
+
+```{r}
+#summarizing the scores/results from the above models
+SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)  
+SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
+ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
+ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
+es_scores <- accuracy(maine_SSES_fore$mean,maine_ts_test)
+StructTS_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
+TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
+NN_scores <- accuracy(NN_forecast$mean,maine_ts_test) 
+
+scores <- as.data.frame(
+  rbind(SNAIVE_scores, SARIMA_scores, ETS_scores, ARIMAF_scores, es_scores, StructTS_scores, 
+        TBATS_scores, NN_scores)
+  )
+row.names(scores) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier", 
+                       "ES", "StructTS", "TBAT", "NN")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+
+```
