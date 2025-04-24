@@ -226,7 +226,7 @@ autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 ```
 
 ```{r}
-n_for <- 11 
+n_for <- 3
 #play with this, change to 12, 23, 2 and check if the best model is still the same
 maine_SSES <- es(maine_ts_train, model="ZZZ", h=n_for, holdout=FALSE)
 checkresiduals(maine_SSES)
@@ -240,6 +240,7 @@ Model own interpretation:
 - Histogram of residuals display rough normal distribution around 0, which is good.
 - Ljung-Box test: p-value (0.79) much greater than 0.05, so residuals are white noise, good. 
 
+ACF: since the present value has very low correlation with the previous periods in the short term. Since we are looking at tidal power, longer-term trends may be more important, so es model did not do well. 
 
 ```{r}
 SS_seas <- StructTS(maine_ts_train,
@@ -261,6 +262,12 @@ checkresiduals(SS_seas)
 #Generating forecasts
 maine_SS_for <- forecast(SS_seas,h=n_for)
 plot(maine_SS_for)
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(maine_SS_for, series="SS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Maine")
 ```
 Revised model: Residual plot improvements (no trends/outliers) suggest:
 
