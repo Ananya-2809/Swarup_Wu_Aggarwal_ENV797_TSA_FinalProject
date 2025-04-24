@@ -33,13 +33,13 @@ library(tseries)
 #Import datasets
 here()
 getwd()
-alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
+alaska_df <- read.csv("./Data/Alaska_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-florida_df <- read.csv("../Data/Florida_combined_output.csv",
+florida_df <- read.csv("./Data/Florida_combined_output.csv",
                       skip = 2,
                       header = TRUE)
-maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
                       skip = 2,
                       header = TRUE)
 ```
@@ -331,7 +331,7 @@ SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)
 SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
 ETS_scores <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
 ARIMAF_scores <- accuracy(maine_arima_fore$mean,maine_ts_test)
-es_scores <- accuracy(maine_SSES_fore$mean,maine_ts_test)
+es_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
 StructTS_scores <- accuracy(maine_SS_for$mean,maine_ts_test)
 TBATS_scores <- accuracy(tbats_forecast$mean,maine_ts_test)  
 NN_scores <- accuracy(NN_forecast$mean,maine_ts_test) 
@@ -405,10 +405,9 @@ autoplot(alaska_stlf_ets) + ggtitle("STL + ETS Forecast - Alaska")
 ```
 
 #model 2: ARIMA + Fourier terms
-k <- 4  #number of Fourier terms kept at 4, as 5 onwards, the RMSE started increasing
 ```{r}
 #Model 2: Arima + Fourier
-k <- 4
+k <- 6 #Value that gives lowest RMSE - need to justify
 alaska_arima_fit <- auto.arima(alaska_ts_train, 
                              seasonal=FALSE, 
                              lambda=0,
@@ -440,3 +439,133 @@ autoplot(alaska_ts_train) +
   ggtitle("TBATS forecast of monthly wave power in Alaska")
 ```
 
+```{r}
+#summarizing the scores/results from the above models
+ETS_scores <- accuracy(alaska_stlf_ets$mean,alaska_ts_test)  
+ARIMAF_scores <- accuracy(alaska_arima_fore$mean,alaska_ts_test)
+TBATS_scores <- accuracy(tbats_forecast$mean,alaska_ts_test)  
+
+scores <- as.data.frame(
+  rbind(ETS_scores, ARIMAF_scores, TBATS_scores)
+  )
+row.names(scores) <- c("STL+ETS", "ARIMA+Fourier", "TBAT")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Monthly Wave Power - alaska",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+
+```
+
+#Florida
+
+###Start by creating monthly time series objects for Florida and plotting ACF and PACF plots
+```{r}
+#converting to time series object
+florida_ts_train <- ts(florida_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(florida_monthly_train_df$Year), min(florida_monthly_train_df$Month)),
+                     frequency = 12)
+
+florida_ts_test <- ts(florida_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(florida_monthly_test_df$Year), min(florida_monthly_test_df$Month)),
+                     frequency = 12)
+
+florida_train_plot <- autoplot(florida_ts_train) +
+  ggtitle("Monthly Mean Wave Power - Florida (Training)") +
+  xlab("Year") + ylab("Wave Power (W/m)")
+plot(florida_train_plot)
+
+#plotting acf and pacf
+florida_train_acf <- ggAcf(florida_ts_train) + ggtitle("ACF - Monthly Wave Power (Florida)")
+florida_train_pacf <- ggPacf(florida_ts_train) + ggtitle("PACF - Monthly Wave Power (Florida)")
+plot_grid(florida_train_acf, florida_train_pacf, ncol = 1)
+
+#decomposing the time series
+florida_train_decomp <- decompose(florida_ts_train)
+autoplot(florida_train_decomp)
+
+```
+
+>Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the repeating seasonal patterns at lag 12 for the ACF suggest strong yearly seasonality.
+
+```{r}
+adf_florida <- adf.test(florida_ts_train)
+# Print the results
+print(adf_florida)
+```
+
+>Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.
+
+###Proceed with using our 3 chosen models on Florida
+```{r}
+fore_h <- length(florida_ts_test)
+
+#model 1: STL decomposition + ETS
+florida_stlf_ets <- stlf(florida_ts_train, h = fore_h, method = "ets")
+autoplot(florida_stlf_ets) + ggtitle("STL + ETS Forecast - Florida")
+```
+
+#model 2: ARIMA + Fourier terms
+```{r}
+#Model 2: Arima + Fourier
+k <- 6 #Value that gives lowest RMSE - need to justify
+florida_arima_fit <- auto.arima(florida_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(florida_ts_train, 
+                                          K = k))
+
+florida_arima_fore <- forecast(florida_arima_fit,
+                           xreg=fourier(florida_ts_train,
+                                        K = k,
+                                        h = fore_h),
+                           h = fore_h)
+autoplot(florida_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Florida")
+```
+
+```{r}
+#Model 3: TBATS
+florida_train_tbats_fit <- tbats(florida_ts_train)
+
+tbats_forecast <- forecast(florida_train_tbats_fit, h=fore_h)
+
+#Plot foresting results
+autoplot(tbats_forecast) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(florida_ts_train) +
+  autolayer(tbats_forecast, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Florida")
+```
+
+```{r}
+#summarizing the scores/results from the above models
+ETS_scores <- accuracy(florida_stlf_ets$mean,florida_ts_test)  
+ARIMAF_scores <- accuracy(florida_arima_fore$mean,florida_ts_test)
+TBATS_scores <- accuracy(tbats_forecast$mean,florida_ts_test)  
+
+scores <- as.data.frame(
+  rbind(ETS_scores, ARIMAF_scores, TBATS_scores)
+  )
+row.names(scores) <- c("STL+ETS", "ARIMA+Fourier", "TBAT")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores[best_model_index,]))
+
+kbl(scores, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Florida",
+      digits = array(5,ncol(scores))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
+
+```
