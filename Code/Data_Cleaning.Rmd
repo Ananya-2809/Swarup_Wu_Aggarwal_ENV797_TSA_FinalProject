@@ -683,6 +683,9 @@ kbl(compare_df,
 
 >Observation: We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE%). Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, essentially meaning that our one-year ahead forecast could be no better than random guesses!
 
+>Limitations and Future Analyses:
+- Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. However, there are a lot of other factors that affect the wave patterns, such as wind speed, sea surface temperature, weather events etc. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. So, future analyses would involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
+
 
 # List References and Datasets:
 - Evaluating the present and future potential of tidal power in the U.S. AltEnergyMag. (n.d.). https://www.altenergymag.com/article/2024/10/evaluating-the-present-and-future-potential-of-tidal-power-in-the-us/43464   
