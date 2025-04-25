@@ -602,3 +602,8 @@ kbl(scores,
   kable_styling(latex_options="striped", stripe_index = which.min(scores[,"RMSE"]))
 
 ```
+
+# List References and Datasets:
+- Evaluating the present and future potential of tidal power in the U.S. AltEnergyMag. (n.d.). https://www.altenergymag.com/article/2024/10/evaluating-the-present-and-future-potential-of-tidal-power-in-the-us/43464   
+- Lavaa, A. (2023, April 24). Tidal Energy Diagram: The story of tidal power based on diagrams - industrial manufacturing blog. linquip. https://www.linquip.com/blog/tidal-energy-diagram-story-of-tidal-power/   
+- Marine Energy Atlas. Innovative Data Energy Applications. (n.d.). https://maps.nrel.gov/marine-energy-atlas/data-viewer/download?vL=WavePowerMerged&b=%5B%5B-150.717111%2C43.537926%5D%2C%5B-114.418117%2C51.672586%5D%5D   
