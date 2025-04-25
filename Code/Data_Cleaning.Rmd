@@ -227,13 +227,31 @@ maine_ts_test <- ts(maine_monthly_test_df$monthly_mean_wave_power,
                      frequency = 12)
 ```
 
+We used the decompose() function on our training dataset and performed an additive deomposition. From Figure 3, we can confirm the strong seasonality seen in mean wave power in Maine. We also see that mean wave power peaked from 1995 to around 2000 in Maine. This could be due to climate and oceanographic factors (wind speed, underwater currents) that warrant a further look. Since tidal energy is subject to a whole host of climate and oceanographic factors, our remainder series shows some significant spikes at irregular intervals which could be caused by specific weather events. Further research into Maine's short-term and long-term weather patterns is recommended for future forecasting projects.
 ```{r, Figure 3. Decomposition of Maine monthly mean wave power series}
 #decomposing the time series
 maine_train_decomp <- decompose(maine_ts_train)
 autoplot(maine_train_decomp)
 ```
 
+We proceed by setting the forecasting length to be from January 2004 to December 2010 (testing dataset). We will evaluate our forecasts against values found in our testing datasets.
 
+For forecasting, we trained and tested the following models:
+- Seasonal Naïve: Used as a preliminary baseline due to strong seasonal patterns in monthly wave power
+
+-ARIMA + Fourier: Applied using auto.arima() function with a fourier term
+
+-ETS + STL: Implements seasonal trend decomposition (Figure 3) and performs exponential smoothing using stlf() function
+
+- SARIMA: Applied a seasonal ARIMA model (due to strong seasonality present) using the auto.arima() function
+
+-ES: Exponential smoothing to use recent, past values of monthly wave power to forecast future ones
+
+-StructTS: Uses a state-space framework to model unobserved components of monthly tidal series. Applied using a Basic Structural Model (BSM).
+
+- TBATS: Used to model complex seasonal patterns present in tidal power 
+
+- Neural Network + XREG: Single, hidden-layer neural network (with our training dataset as an external regressor).
 ```{r}
 #start of the forecasting
 
@@ -284,13 +302,6 @@ checkresiduals(maine_SSES)
 maine_SSES_fore <- forecast(maine_SSES,h=n_for)
 plot(maine_SSES_fore)
 ```
-Model intial interpretation:
-- Residuals kind of fluctuate around 0, but the variance is not very constant, but variance have slightly higher value fluctuations > 0, so some inconsistency with potential minor outliers.
-- ACF plot: no significant spikes outside of the blue lines, which is good
-- Histogram of residuals display rough normal distribution around 0, which is good.
-- Ljung-Box test: p-value (0.79) much greater than 0.05, so residuals are white noise, good. 
-
-ACF: since the present value has very low correlation with the previous periods in the short term. Since we are looking at tidal power, longer-term trends may be more important, so es model did not do well. 
 
 ```{r}
 SS_seas <- StructTS(maine_ts_train,
@@ -303,7 +314,8 @@ checkresiduals(SS_seas)
 maine_SS_for <- forecast(SS_seas,h=n_for)
 plot(maine_SS_for)
 ```
-This model without changes from Module 10 was bad, strong autocorrelation and convergence issue, let's change:
+
+
 ```{r}
 maine_ts_train_diff <- diff(maine_ts_train, differences = 1)
 SS_seas <- StructTS(maine_ts_train_diff, type = "BSM", , fixed = c(NA, NA, NA, NA))  # Let all parameters vary
@@ -319,20 +331,6 @@ autoplot(maine_ts_train) +
   ylab("Monthly Tidal Power") +
   ggtitle("TBATS forecast of monthly wave power in Maine")
 ```
-Revised model: Residual plot improvements (no trends/outliers) suggest:
-
-- The model handles mean and variance reasonably well.
-
-- The seasonal/trend components are likely adequate.
-
-ACF spikes + low p-value imply:
-
-- Short-term dependencies remain unmodeled (e.g., AR/MA effects).
-
-- Seasonal harmonics (higher-frequency cycles) may be missed.
-
-Next steps could be:
-- combine the StructTS model with arima layer
 
 ```{r}
 #TBATS Model
@@ -376,10 +374,8 @@ autoplot(maine_ts_train) +
   ylab("Monthly Tidal Power") 
 ```
 
->Observations: Both TBATS and NN under-forecast monthly tidal power. TBATS performs slightly better but both models do not seem to capture the seasonality of the monthly tidal power. For NN, some tweaking can be done to see if changing the lag can better capture the seasonality. 
-
-
-```{r}
+Table 1 displays our accuracy metrics for our models. 
+```{r, fig.cap= 'Table 1. Forecast accuracy scores for Maine monthly mean wave power'}
 #summarizing the scores/results from the above models
 SNAIVE_scores <- accuracy(maine_snaive$mean,maine_ts_test)  
 SARIMA_scores <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
