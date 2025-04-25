@@ -1,8 +1,10 @@
 ---
 title: "Final_Project Report"
 author: "Ananya, Rosie, Sameer"
-date: '2025-04-04'
-output: pdf_document
+date: "2025-04-04"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -30,6 +32,8 @@ library(cowplot)
 library(kableExtra)
 library(smooth)
 library(tseries)
+library(vtable)
+library(skimr)
 ```
 
 
@@ -145,16 +149,24 @@ maine_monthly_df <- maine_daily_df %>%
                         monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 ```
 
-# Maine
-###We will use Maine to test our various time series models. Using accuracy metrics and plots we will choose the 3 best models and forecast mean monthly wave power for Alaska and Florida.
+As a starter for looking at wave energy potential across the three sites, we generated 3 summary statistics tables below for the monthly mean wave power across each site (from January 1979 to December 2010).
 
+#Analysis
+We start off with Maine as a test site. The location we chose for Maine is 3 kilometers offshore with reliable wave and wind currents and thus, a good starting point to test our ability to forecast tidal power.
+
+We proceeded with looking at the time series plots for both daily and monthly mean wave power. We also looked at the ACF and PACF plots of both series, so that we can make an informed decision on which time series (daily or monthly) to pursue.
 ```{r}
 maine_daily_df <- maine_daily_df %>%
   mutate(date = make_date(Year, Month, Day))
 
 maine_monthly_df <- maine_monthly_df %>%
   mutate(date = make_date(Year, Month, 1))
+```
 
+From Figure 1, we see that while the daily series provides a more granular view of the fluctuations in mean wave power, it is subject to extreme outliers that can affect our forecasting ability. Additionally, when compared to the monthly series, there is a lot more noise in the graph, making it harder to discern trends.
+
+The monthly series on the other hand shows a clearer seasonal pattern. Additionally, by averaging out to a monthly series, the impact of outliers is diminished.
+```{r, fig.cap='Figure 1. Plots for mean wave power in Maine (Daily and Monthly)'}
 #initial plots
 maine_d_plot <- ggplot(maine_daily_df, aes(x = date, y = daily_mean_wave_power)) +
   geom_line(color = "steelblue", alpha = 0.5) +
@@ -167,20 +179,23 @@ maine_m_plot <- ggplot(maine_monthly_df, aes(x = date, y = monthly_mean_wave_pow
   theme_minimal()
 
 plot_grid(maine_d_plot, maine_m_plot, ncol = 1)
+```
 
-
+From Figure 2, we see that both ACF and PACF plots for the daily series have a sharp drop-off after lag 1, suggesting that past daily mean wave power values do not carry much signal for future values. For the monthly mean wave power, the ACF and PACF plots shows strong seasonality with the wave pattern. The autocorrelation persists over time, which will be ideal for ARIMA/SARIMA and other seasonal models.
+```{r, Figure 2. ACF and PACF plots of daily and monthly mean wave power in Maine}
 #acf plots
 maine_d_acf <- ggAcf(maine_daily_df$daily_mean_wave_power) + ggtitle("ACF - Daily Wave Power (Maine)")
 maine_m_acf <- ggAcf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("ACF - Monthly Wave Power (Maine)")
-plot_grid(maine_d_acf, maine_m_acf, ncol = 1)
 
+maine_d_pacf <- ggPacf(maine_daily_df$daily_mean_wave_power) + ggtitle("PACF - Daily Wave Power (Maine)")
+maine_m_pacf <- ggPacf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("PACF - Monthly Wave Power (Maine)")
+
+
+plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
 
 ```
 
-> Observations: Daily mean wave power appears to be highly volatile and masked by noise, which might make it harder to model directly. On the other hand, monthly mean wave power shows a clear seasonal structure with regular peaks and dips, and consistent annual cycles across decades. 
-Moreover, the ACF plot for the daily wave power drops sharply after lag 1, suggesting that past daily values don't carry much signal for future values. For the monthly wave power, the ACF plot shows strong seasonality with the wave pattern. The autocorrelation persists over time, which will be ideal for ARIMA/SARIMA and other seasonal models.
-
-
+Thus, we will proceed with forecasting for the monthly series. We start by splitting our monthly mean wave power datasets using the 80-20 rule: 80% for training, 20% for testing. Our training dataset for Maine contains mean wave power from January 1979 to December 2003 and our testing dataset for Maine contains mean wave power from January 2004 to December 2010.
 ```{r}
 #Create training and test datasets using the 80-20 rule (for monthly data only)
 
@@ -210,21 +225,12 @@ maine_ts_train <- ts(maine_monthly_train_df$monthly_mean_wave_power,
 maine_ts_test <- ts(maine_monthly_test_df$monthly_mean_wave_power,
                      start = c(min(maine_monthly_test_df$Year), min(maine_monthly_test_df$Month)),
                      frequency = 12)
+```
 
-maine_train_plot <- autoplot(maine_ts_train) +
-  ggtitle("Monthly Mean Wave Power - Maine (Training)") +
-  xlab("Year") + ylab("Wave Power (W/m)")
-plot(maine_train_plot)
-
-#plotting acf and pacf
-maine_train_acf <- ggAcf(maine_ts_train) + ggtitle("ACF - Monthly Wave Power (Maine)")
-maine_train_pacf <- ggPacf(maine_ts_train) + ggtitle("PACF - Monthly Wave Power (Maine)")
-plot_grid(maine_train_acf, maine_train_pacf, ncol = 1)
-
+```{r, Figure 3. Decomposition of Maine monthly mean wave power series}
 #decomposing the time series
 maine_train_decomp <- decompose(maine_ts_train)
 autoplot(maine_train_decomp)
-
 ```
 
 
