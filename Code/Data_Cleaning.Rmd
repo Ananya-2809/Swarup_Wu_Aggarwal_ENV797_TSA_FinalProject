@@ -1,5 +1,5 @@
 ---
-title: "Final_Project"
+title: "Final_Project Report"
 author: "Ananya, Rosie, Sameer"
 date: '2025-04-04'
 output: pdf_document
@@ -9,8 +9,11 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 
 #Set working directory
-knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+#knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+
 ```
+
+
 
 ```{r, message= FALSE}
 #Load libraries
@@ -29,6 +32,61 @@ library(smooth)
 library(tseries)
 ```
 
+
+# Introduction
+## Why are we interested in Tidal Power? 
+### Relevance to our fields of studies and interests:
+Our group is made up with students from Coastal Marine Systems and Energy concentrations under the MEM program, and we decided that this topic covered the fields of interests for all of our group members.
+
+### Great Potential of Tidal Energy:
+
+Clean & Sustainable Energy Source:  
+- Tidal power is a renewable energy that produces zero greenhouse gas emissions. 
+- Unlike traditional hydro power, tidal energy does not require dams or large reservoirs, making it more environmentally friendly.  
+ 
+High Energy Density & Efficiency:  
+- Wind speeds shift, and sunlight fades, so such systems require storage to sustain their service areas’ electrical demand.  
+- By contrast, ocean currents are relatively constant, and some amount of motion still occurs at all times.   
+- So, a tidal energy farm can provide continuous power without the need for expensive battery or fuel cell storage.  
+- Tidal energy has a higher power capacity than many other renewable, helping bridge the gap in clean energy demand.  
+
+Reliable & Predictable:  
+- Unlike intermittent sources like wind and solar, tidal currents are consistent and predictable, providing continuous power without heavy reliance on storage.  
+- This reliability helps balance energy grids, complementing other renewables during low-generation periods.  
+
+Growing U.S. Interest & Investment:  
+- No commercially available sites right now in the US.  
+- There are Early projects in Maine and New York have successfully tested tidal turbines.  
+
+
+# Project Overview: 
+In this project, we are aiming to compare the Tidal Power Potential across three sites in different latitudes and coastal areas with different geographic and climatic conditions in the US. The tidal power potential is assessed by:   
+- The Wave Energy Flux (Watts per square meter) = Wave Power Density (Joules per cubic meter) * Wave Energy Period (seconds).  
+- Then in the Analysis below, we are going to compare the seasonal and long term trends of the time series of the Wave Energy Flux that we calculated.   
+- Then we will run models of prediction based on training and testing datasets that we extracted in the original time series data.   
+- Then we compare the model forecasting results to see which site has better model prediction results and higher/ more stable values (Wave Energy Flux).  
+
+# Data selection
+We first picked 3 sites/ locations/ areas tend to be some of the locations referred to for its tidal power potential in the general Internet searches. These three sites are:  
+- Gulf of Maine (43.68° N, 
+69.77 ° W)   
+- ~ 3 km distance into ocean near Miami, Florida  (25.74 ° N,  80.11 ° W)   
+- Cook Inlet, Alaska (59.37° N, 152.64° W)  
+
+With the lat-long of these sites, we extracted raw data of 1979-2010 Wave Energy Density and Energy period data in  NREL marine energy atlas: http://nrel.gov/marine-energy-atlas/data-viewer  
+
+These areas are distinct by latitudes and longitudes, as well as different coasts and climatic environments. 
+
+
+# Data Wrangling & Initial Analysis
+- In general, we first calculated the Wave Energy Flux data based on the raw data we extracted.   
+- Then the Wave Energy Flux datasets for all 3 sites' were aggregated to daily and monthly view (original series).   
+- Then we split the current full dataset using 80/20 rule into training and testing datasets.  
+- Then, we conducted the original time series analysis.  
+- Then we ran various models to compare predicting/ forecasting performance on the Maine dataset.  
+- Then we used the top 3 performance models (Arima + Fourier k-4, TBATs. and STL+ETS) for the other 2 sites Wave Energy Flux.
+- Compare Wave Energy Flux Results of the 3 sites and determine which site has more potential.
+
 ```{r}
 #Import datasets
 here()
@@ -44,19 +102,6 @@ maine_df <- read.csv("./Data/Gulf of Maine_combined_output.csv",
                       header = TRUE)
 ```
 
-```{r}
-# Data wrangling needed: create timestamps (sum hourly to daily),
-#Sameer comment: Not sure if we can sum, but I can proceed with creating a column that finds the daily average
-
-# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
-#Was reading this paper: https://link.springer.com/chapter/10.1007/978-3-319-39889-1_3 and the NOAA explanation on Omni Directional Wave Power. It seems that there is no easy way to compute wave energy flux (so we should not compute it), but that Omni Directional Wave Power is often used as a stand-in as it is correlated with wave energy. The Springer link mentions using wave energy period as another criteria for determining which is a suitable energy site
-
-# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
-# Run original TS, ACF, PACF
-# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
-
-## state space model can eliminate the impact of outliers
-```
 
 ```{r}
 #Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
@@ -100,14 +145,10 @@ maine_monthly_df <- maine_daily_df %>%
                         monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 ```
 
-#Maine
+# Maine
 ###We will use Maine to test our various time series models. Using accuracy metrics and plots we will choose the 3 best models and forecast mean monthly wave power for Alaska and Florida.
 
 ```{r}
-#doing some analysis on the daily and monthly time series to decide what level of granularity might be better for forecasting
-#things to look at - volatility (noise), trend/seasonality, ACF patterns
-#starting with Maine as our "main" site hehe!
-
 maine_daily_df <- maine_daily_df %>%
   mutate(date = make_date(Year, Month, Day))
 
@@ -229,16 +270,16 @@ autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 ```
 
 ```{r}
-n_for <- 3
-#play with this, change to 12, 23, 2 and check if the best model is still the same
+n_for <- 11
+#played with this, changed to 12, 23, 2 and check if the best model is still the same
 maine_SSES <- es(maine_ts_train, model="ZZZ", h=n_for, holdout=FALSE)
 checkresiduals(maine_SSES)
 # forecast and plot
-maine_SSES_fore <- forecast(SSES_seas,h=n_for)
+maine_SSES_fore <- forecast(maine_SSES,h=n_for)
 plot(maine_SSES_fore)
 ```
-Model own interpretation:
-- Residuals kind of fluctuate around 0, but the variance is not very constant, but variance have slightly higher value fluctuations > 0., so some inconsistency.Potential minor Outliers
+Model intial interpretation:
+- Residuals kind of fluctuate around 0, but the variance is not very constant, but variance have slightly higher value fluctuations > 0, so some inconsistency with potential minor outliers.
 - ACF plot: no significant spikes outside of the blue lines, which is good
 - Histogram of residuals display rough normal distribution around 0, which is good.
 - Ljung-Box test: p-value (0.79) much greater than 0.05, so residuals are white noise, good. 
@@ -256,7 +297,7 @@ checkresiduals(SS_seas)
 maine_SS_for <- forecast(SS_seas,h=n_for)
 plot(maine_SS_for)
 ```
-This odel without changes from Module 10 was bad, strong autocorrelation and covergence issue, let's change:
+This model without changes from Module 10 was bad, strong autocorrelation and convergence issue, let's change:
 ```{r}
 maine_ts_train_diff <- diff(maine_ts_train, differences = 1)
 SS_seas <- StructTS(maine_ts_train_diff, type = "BSM", , fixed = c(NA, NA, NA, NA))  # Let all parameters vary
@@ -403,6 +444,7 @@ print(adf_alaska)
 >Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.
 
 ###Proceed with using our 3 chosen models on Alaska
+## Model 1: STL decomposition + ETS
 ```{r}
 fore_h <- length(alaska_ts_test)
 
@@ -411,7 +453,7 @@ alaska_stlf_ets <- stlf(alaska_ts_train, h = fore_h, method = "ets")
 autoplot(alaska_stlf_ets) + ggtitle("STL + ETS Forecast - Alaska")
 ```
 
-#model 2: ARIMA + Fourier terms
+## Model 2: ARIMA + Fourier terms
 ```{r}
 #Model 2: Arima + Fourier
 k <- 6 #Value that gives lowest RMSE - need to justify
@@ -429,6 +471,8 @@ alaska_arima_fore <- forecast(alaska_arima_fit,
 autoplot(alaska_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Alaska")
 ```
 
+
+## Model 3: TBATS
 ```{r}
 #Model 3: TBATS
 alaska_train_tbats_fit <- tbats(alaska_ts_train)
@@ -518,7 +562,7 @@ florida_stlf_ets <- stlf(florida_ts_train, h = fore_h, method = "ets")
 autoplot(florida_stlf_ets) + ggtitle("STL + ETS Forecast - Florida")
 ```
 
-#model 2: ARIMA + Fourier terms
+## Model 2: ARIMA + Fourier terms
 ```{r}
 #Model 2: Arima + Fourier
 k <- 6 #Value that gives lowest RMSE - need to justify
@@ -536,6 +580,7 @@ florida_arima_fore <- forecast(florida_arima_fit,
 autoplot(florida_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Florida")
 ```
 
+## Model 3 TBATs
 ```{r}
 #Model 3: TBATS
 florida_train_tbats_fit <- tbats(florida_ts_train)

@@ -1,9 +1,24 @@
+
+# Data wrangling needed: create timestamps (sum hourly to daily),
+#Sameer comment: Not sure if we can sum, but I can proceed with creating a column that finds the daily average
+
+# Add Wave Energy column: Formula for Wave Energy Flux = Wave Power Density * Wave Energy Period
+#Was reading this paper: https://link.springer.com/chapter/10.1007/978-3-319-39889-1_3 and the NOAA explanation on Omni Directional Wave Power. It seems that there is no easy way to compute wave energy flux (so we should not compute it), but that Omni Directional Wave Power is often used as a stand-in as it is correlated with wave energy. The Springer link mentions using wave energy period as another criteria for determining which is a suitable energy site
+
+# Data Exploration: just graph the Wave Energy Flux original series data comparison between the 3 sites.
+# Run original TS, ACF, PACF
+# Trains models: people tend to use the SARIMA, ARIMA Fourier, STL+ETS, TBATS, 
+
+## state space model can eliminate the impact of outliers
+
+
 Ananya - 
 1. do the initial analysis on daily vs monthly data, and see why we want to go with the monthly data
 2. models - ARIMA, ARIMA + Fourier, ETS+STL
 
 Rosie - 
-1. models - State space models - SSES, SS StructTS
+1. Intro, models - State space models - SSES, SS StructTS
 
 Sameer - 
 1. models - TBATS, Neural Network
+
