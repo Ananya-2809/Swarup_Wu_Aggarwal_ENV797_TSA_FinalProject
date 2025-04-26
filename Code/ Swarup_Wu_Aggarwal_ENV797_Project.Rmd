@@ -1,11 +1,11 @@
 ---
-title: "Final_Project Report"
-author: "Ananya, Rosie, Sameer"
-date: "2025-04-04"
+title: "Forecasting Tidal Power in Alaska, Maine and Florida"
+author: "Ananya Aggarwal, Rosie Wu, Sameer Swarup (https://github.com/Ananya-2809/Swarup_Wu_Aggarwal_ENV797_TSA_FinalProject.git)"
+date: "2025-04-25"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
@@ -437,7 +437,7 @@ kbl(scores_Maine,
 
 Figures 4 and 5 look at how our models forecast monthly mean wave power for Maine for our top 3 models, and compares it with actuals. We see that all 3 models capture the seasonality of tidal power well. However, they also underestimate its highest peaks on average. This could likely be due to not accounting for the many exogenous variables that can cause spikes in tidal power (powerful rip currents, strong weather storms, sudden changes in wind velocity). Our 3 models are dependable in providing a minimum power generation forecast, which is helpful for energy planners and policymakers who want to understand the cost-benefit analysis of harnessing tidal energy. Additionally, the underestimation of maximum capacity can be beneficial when building power stations as the forecasts can be used to determine safe lower bounds on maximum capacity. 
 
-```{r, fig.cap='Figure 4. Forecast comparisons of our top 3 models', message=FALSE, echo=FALSE}
+```{r, fig.cap='Figure 4. Forecast comparisons of our top 3 models', message==FALSE, echo=FALSE, warning=FALSE}
 arima_f_plot <- autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 stl_plot <- autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
 tbat_plot <- autoplot(tbats_forecast) + ggtitle("TBATS Forecast - Maine") 
@@ -774,7 +774,7 @@ ggplot() +
 ```
 
 
-#Conclusion & Discussion
+# Conclusion & Discussion
 
 ```{r}
 #extracting each site’s best model (by RMSE)
@@ -816,11 +816,11 @@ kbl(compare_df,
 
 We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE %). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it indeed shows more stability than the Maine forecasts, and thus, could be a good alternative site choice if the forecasting or simulation goal targets more stable, sub-seasonal behavior instead of purely accuracy score. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, which indicates that the one-year ahead forecast did not perform well and was affected by too much random variations/ noise. This is likely due to the geography of the location. Large mountains make incoming winds variable and a more open ocean site would provide more stability in tidal power generation. 
 
-##Limitations and Future Analyses:
+## Limitations and Future Analyses:
 Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. Overall, they capture the seasonal patterns of tidal power across all 3 states well. However, they consistenly underestimated peaks in tidal power and this is likely due to the large number of exogenous variables that affect the wave patterns, such as wind speed, sea surface temperature and weather events. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. Future analyses should involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed and aim to forecast to at least 2028, as we prepare for a federal administration that is hopefully more supportive of renewable energy sources like tidal power. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
 
 
-# List References and Datasets:
+# References and Datasets:
 - Evaluating the present and future potential of tidal power in the U.S. AltEnergyMag. (n.d.). https://www.altenergymag.com/article/2024/10/evaluating-the-present-and-future-potential-of-tidal-power-in-the-us/43464   
 - Lavaa, A. (2023, April 24). Tidal Energy Diagram: The story of tidal power based on diagrams - industrial manufacturing blog. linquip. https://www.linquip.com/blog/tidal-energy-diagram-story-of-tidal-power/   
 - Marine Energy Atlas. Innovative Data Energy Applications. (n.d.). https://maps.nrel.gov/marine-energy-atlas/data-viewer/download?vL=WavePowerMerged&b=%5B%5B-150.717111%2C43.537926%5D%2C%5B-114.418117%2C51.672586%5D%5D   
