@@ -436,13 +436,48 @@ kbl(scores_Maine,
 
 ```
 
-Figure 4 looks at how our models forecast monthly mean wave power for Maine for our top 3 models. We see that all 3 models capture the seasonality of tidal power well. However, they also underestimate its highest peaks on average. This could likely be due to not accounting for the many exogenous variables that can cause spikes in tidal power (powerful rip currents, strong weather storms, sudden changes in wind velocity). Our 3 models are dependable in providing a minimum power generation forecast, which is helpful for energy planners and policymakers who want to understand the cost-benefit analysis of harnessing tidal energy. Additionally, the underestimation of maximum capacity can be beneficial when building power stations as the forecasts can be used to determine safe lower bounds on maximum capacity. 
+Figures 4 and 5 look at how our models forecast monthly mean wave power for Maine for our top 3 models, and compares it with actuals. We see that all 3 models capture the seasonality of tidal power well. However, they also underestimate its highest peaks on average. This could likely be due to not accounting for the many exogenous variables that can cause spikes in tidal power (powerful rip currents, strong weather storms, sudden changes in wind velocity). Our 3 models are dependable in providing a minimum power generation forecast, which is helpful for energy planners and policymakers who want to understand the cost-benefit analysis of harnessing tidal energy. Additionally, the underestimation of maximum capacity can be beneficial when building power stations as the forecasts can be used to determine safe lower bounds on maximum capacity. 
+
 ```{r, fig.cap='Figure 4. Forecast comparisons of our top 3 models'}
 arima_f_plot <- autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 stl_plot <- autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
 tbat_plot <- autoplot(tbats_forecast) + ggtitle("TBATS Forecast - Maine") 
 plot_grid(arima_f_plot, stl_plot, tbat_plot, ncol = 1)
 ```
+
+```{r, fig.cap='Figure 5. Comparing Forecasted Values with Actuals - Maine'}
+#actual test data
+maine_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(maine_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_m <- tibble(
+  date = maine_test_df$date,
+  STL_ETS_m = as.numeric(maine_stlf_ets$mean),
+  ARIMA_Fourier_m = as.numeric(maine_arima_fore$mean),
+  TBATS_m = as.numeric(tbats_forecast$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_m <- forecast_df_m %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = maine_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_m, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Maine",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+
+```
+
 
 Given the performance of our 3 chosen models, we proceed with fitting them on Alaska and Florida.
 
@@ -557,6 +592,41 @@ kbl(scores_Alaska,
 
 ```
 
+Figure 6 compares the forecasted values for Alaska with the actual values from the test period. The models are unable to reproduce not just the higher peaks, but also miss the troughs. This shows that the wave power is highly unpredictable, at least at the site of Cook Inlet. Thus, this would require further investigation into other possible sites if we were to consider Alaska as a potential source for tidal energy development.
+
+```{r, fig.cap='Figure 6. Comparing Forecasted Values with Actuals - Alaska'}
+#actual test data
+alaska_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(alaska_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_a <- tibble(
+  date = maine_test_df$date,
+  STL_ETS_a = as.numeric(alaska_stlf_ets$mean),
+  ARIMA_Fourier_a = as.numeric(alaska_arima_fore$mean),
+  TBATS_a = as.numeric(tbats_forecast_a$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_a <- forecast_df_a %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = alaska_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_a, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Alaska",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
 ## Florida
 
 Start by creating monthly time series objects for Florida and plotting ACF and PACF plots
@@ -668,6 +738,41 @@ kbl(scores_Florida,
 
 ```
 
+Figure 7, comparing the forecasted values with the actual Florida wave power numbers, shows that Florida's cycles are much more predictable, especially in the recent few years. The lows, especially, are very well produced by all three methods!
+
+```{r, fig.cap='Figure 7. Comparing Forecasted Values with Actuals - Florida'}
+#actual test data
+florida_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(florida_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_f <- tibble(
+  date = florida_test_df$date,
+  STL_ETS_f = as.numeric(florida_stlf_ets$mean),
+  ARIMA_Fourier_f = as.numeric(florida_arima_fore$mean),
+  TBATS_f = as.numeric(tbats_forecast_f$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_f <- forecast_df_f %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = florida_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_f, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Florida",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
 # Comparing the three sites
 
 ```{r}
@@ -708,7 +813,7 @@ kbl(compare_df,
 
 ```
 
->Observation: We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE%). Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, essentially meaning that our one-year ahead forecast could be no better than random guesses!
+>Observation: We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE%). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it does show more stability than the Maine forecasts, and thus, could be a good runner-up if we were open to trading some accuracy for more stable subseasonal behaviour. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, essentially meaning that our one-year ahead forecast could be no better than random guesses!
 
 >Limitations and Future Analyses:
 - Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. However, there are a lot of other factors that affect the wave patterns, such as wind speed, sea surface temperature, weather events etc. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. So, future analyses would involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
