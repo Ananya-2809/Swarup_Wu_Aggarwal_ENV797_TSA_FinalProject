@@ -774,7 +774,8 @@ ggplot() +
 ```
 
 
-# Comparing the three sites
+#Conclusion
+##Comparing the three sites
 
 ```{r}
 #extracting each site’s best model (by RMSE)
