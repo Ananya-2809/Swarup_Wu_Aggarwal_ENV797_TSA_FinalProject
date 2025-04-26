@@ -3,6 +3,7 @@ title: "Final_Project Report"
 author: "Ananya, Rosie, Sameer"
 date: "2025-04-04"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -17,7 +18,7 @@ knitr::opts_chunk$set(echo = FALSE)
 
 
 
-```{r, message= FALSE}
+```{r message= FALSE, include=FALSE}
 #Load libraries
 library(tidyverse)
 library(forecast)
@@ -69,7 +70,7 @@ With the lat-long of these sites, we extracted raw data of 1979-2010 Wave Energy
 We do a preliminary analysis of the three sites based on summary statistics for monthly mean wave power. We see drastic contracts among them, with the Gulf of Maine delivering the most energetic and variable resource, averaging 8,443.4 W/m. On the other hand, Cook Inlet's sheltered basin gives us only ~16.2 W/m of monthly wave power on average. Thus, based on these observations, we first test out forecasting models using the Gulf of Maine site, and then choose the top three performing models on the other two sites for a final comparison of tidal power potential.
 
 
-```{r}
+```{r include=FALSE}
 #Import datasets
 here()
 getwd()
@@ -85,7 +86,7 @@ maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
 ```
 
 
-```{r}
+```{r include=FALSE}
 #Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
 alaska_daily_df <- alaska_df %>% 
               group_by(Year, Month, Day) %>%
@@ -106,7 +107,7 @@ maine_daily_df <- maine_df %>%
                         daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
 ```
 
-```{r}
+```{r include=FALSE}
 #Create a column that contains monthly mean energy period, wave power and wave height and compute mean wave energy flux
 alaska_monthly_df <- alaska_daily_df %>% 
               group_by(Year, Month) %>%
@@ -162,7 +163,7 @@ As concluded from the initial summary statistics, we start off with Maine as a t
 
 We proceeded with looking at the time series plots for both daily and monthly mean wave power. We also looked at the ACF and PACF plots of both series, so that we can make an informed decision on which time series (daily or monthly) to pursue.
 
-```{r}
+```{r include=FALSE}
 maine_daily_df <- maine_daily_df %>%
   mutate(date = make_date(Year, Month, Day))
 
@@ -207,7 +208,7 @@ plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
 ### Preparing the data
 Thus, we will proceed with forecasting for the monthly series. We start by splitting our monthly mean wave power datasets using the 80-20 rule: 80% for training, 20% for testing. Our training dataset for Maine contains mean wave power from January 1979 to December 2003 and our testing dataset for Maine contains mean wave power from January 2004 to December 2010.
 
-```{r}
+```{r }
 #Create training and test datasets using the 80-20 rule (for monthly data only)
 
 #Training
@@ -306,6 +307,7 @@ autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 ```
 
 ```{r}
+# Model 5 Exponential Smoothing
 n_for <- 11
 #played with this, changed to 12, 23, 2 and check if the best model is still the same
 maine_SSES <- es(maine_ts_train, model="ZZZ", h=n_for, holdout=FALSE)
@@ -316,6 +318,7 @@ plot(maine_SSES_fore)
 ```
 
 ```{r}
+# Model 6 StructTS
 SS_seas <- StructTS(maine_ts_train,
                     type="BSM",fixed=c(0.1,0.01,0.3,NA)) 
 
@@ -345,7 +348,7 @@ autoplot(maine_ts_train) +
 ```
 
 ```{r}
-#TBATS Model
+# Model 6 TBATS Model
 maine_train_tbats_fit <- tbats(maine_ts_train)
 
 tbats_forecast <- forecast(maine_train_tbats_fit, h=fore_h)
@@ -362,7 +365,7 @@ autoplot(maine_ts_train) +
 ```
 
 ```{r}
-#NNETAR Model
+# Model 7 NNETAR Model
 
 maine_train_NN_fit <- nnetar(maine_ts_train,
                  p=4,
