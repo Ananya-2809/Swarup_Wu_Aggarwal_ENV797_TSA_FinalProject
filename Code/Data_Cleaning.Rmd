@@ -475,6 +475,18 @@ autoplot(alaska_train_decomp)
 
 ```
 
+```{r, Figure 5. ACF and PACF plots of daily and monthly mean wave power in Alaska}
+#acf plots
+maine_d_acf <- ggAcf(maine_daily_df$daily_mean_wave_power) + ggtitle("ACF - Daily Wave Power (Maine)")
+maine_m_acf <- ggAcf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("ACF - Monthly Wave Power (Maine)")
+
+maine_d_pacf <- ggPacf(maine_daily_df$daily_mean_wave_power) + ggtitle("PACF - Daily Wave Power (Maine)")
+maine_m_pacf <- ggPacf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("PACF - Monthly Wave Power (Maine)")
+
+
+plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
+
+```
 >Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal autoregressive component with a period of 12 months (SAR(1) with a seasonal lag of 12).
 
 ```{r, include=FALSE}
