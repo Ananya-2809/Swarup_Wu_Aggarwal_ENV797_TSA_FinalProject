@@ -483,6 +483,8 @@ Given the performance of our 3 chosen models, we proceed with fitting them on Al
 
 ## Alaska
 
+From figure 7, we see a significant spike at lag 1 in both ACF and PACF plots - this is similar to our ACF and PACF plots for Maine where tidal power does not show strong correlation with recent months. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal component (supported by Figure 8), suggesting that our 3 chosen models should fit well as they model complex seasonality well. Figure 8 shows that much like Maine, there is random noise that our decomposition did not account for, and that future analyses should include exogenous variables to better forecast tidal power.
+
 ```{r, include=FALSE}
 #converting to time series object
 alaska_ts_train <- ts(alaska_monthly_train_df$monthly_mean_wave_power,
@@ -495,14 +497,14 @@ alaska_ts_test <- ts(alaska_monthly_test_df$monthly_mean_wave_power,
 ```
 
 
-```{r}
+```{r,fig.cap='Figure 6. Time Series plot of monthly mean wave power in Alaska'}
 alaska_train_plot <- autoplot(alaska_ts_train) +
   ggtitle("Monthly Mean Wave Power - Alaska (Training)") +
   xlab("Year") + ylab("Wave Power (W/m)")
 plot(alaska_train_plot)
 ```
 
-```{r, Figure 5. ACF and PACF plots of daily and monthly mean wave power in Alaska}
+```{r,fig.cap='Figure 7. ACF and PACF plots of monthly mean wave power in Alaska'}
 #plotting acf and pacf
 alaska_train_acf <- ggAcf(alaska_ts_train) + ggtitle("ACF - Monthly Wave Power (Alaska)")
 alaska_train_pacf <- ggPacf(alaska_ts_train) + ggtitle("PACF - Monthly Wave Power (Alaska)")
@@ -513,13 +515,11 @@ plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
 
 ```
 
-```{r}
+```{r, fig.cap='Figure 8. Time series plot of decomposed monthly wave power series (Alaska)'}
 #decomposing the time series
 alaska_train_decomp <- decompose(alaska_ts_train)
 autoplot(alaska_train_decomp)
 ```
-
->Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal autoregressive component with a period of 12 months (SAR(1) with a seasonal lag of 12).
 
 ```{r, include=FALSE}
 adf_alaska <- adf.test(alaska_ts_train)
@@ -529,10 +529,7 @@ print(adf_alaska)
 
 Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.  
 
-Proceed with using our 3 chosen models on Alaska  
-
-### Model 1: STL decomposition + ETS
-```{r}
+```{r, include=FALSE}
 fore_h_a <- length(alaska_ts_test)
 
 #model 1: STL decomposition + ETS
@@ -540,8 +537,7 @@ alaska_stlf_ets <- stlf(alaska_ts_train, h = fore_h_a, method = "ets")
 autoplot(alaska_stlf_ets) + ggtitle("STL + ETS Forecast - Alaska")
 ```
 
-### Model 2: ARIMA + Fourier terms
-```{r}
+```{r, include=FALSE}
 #Model 2: Arima + Fourier
 k_a <- 6 #Value that gives lowest RMSE - need to justify
 alaska_arima_fit <- auto.arima(alaska_ts_train, 
@@ -558,9 +554,7 @@ alaska_arima_fore <- forecast(alaska_arima_fit,
 autoplot(alaska_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Alaska")
 ```
 
-
-### Model 3: TBATS
-```{r}
+```{r, include=FALSE}
 #Model 3: TBATS
 alaska_train_tbats_fit <- tbats(alaska_ts_train)
 
@@ -577,7 +571,8 @@ autoplot(alaska_ts_train) +
   ggtitle("TBATS forecast of monthly wave power in Alaska")
 ```
 
-```{r}
+From Table 2, we see significantly lower RMSE and MAPE values, suggesting that perhaps our models are better able to capture monthly mean tidal power trends in Cook Inlet, Alaska. However, Figure 9 paints a different picture.
+```{r, fig.cap='Table 2. Forecast accuracy scores for Maine monthly mean wave power'}
 #summarizing the scores/results from the above models
 ETS_scores_a <- accuracy(alaska_stlf_ets$mean,alaska_ts_test)  
 ARIMAF_scores_a <- accuracy(alaska_arima_fore$mean,alaska_ts_test)
@@ -601,9 +596,10 @@ kbl(scores_Alaska,
 
 ```
 
-Figure 6 compares the forecasted values for Alaska with the actual values from the test period. The models are unable to reproduce not just the higher peaks, but also miss the troughs. This shows that the wave power is highly unpredictable, at least at the site of Cook Inlet. Thus, this would require further investigation into other possible sites if we were to consider Alaska as a potential source for tidal energy development.
+Figure 9 compares the forecasted values for Alaska with the actual values from the test period. The models are unable to reproduce not just the higher peaks, but also miss the troughs. It is likely that our models capture the seasonality of tidal power in Cook Inlet well but not its fluctuations.
+This shows that the wave power at is highly unpredictable, at least at the site of Cook Inlet. Thus, this would require further investigation into other possible sites if we were to consider Alaska as a potential source for tidal energy development.
 
-```{r, fig.cap='Figure 6. Comparing Forecasted Values with Actuals - Alaska'}
+```{r, fig.cap='9. Comparing Forecasted Values with Actuals - Alaska'}
 #actual test data
 alaska_test_df <- tibble(
   date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
