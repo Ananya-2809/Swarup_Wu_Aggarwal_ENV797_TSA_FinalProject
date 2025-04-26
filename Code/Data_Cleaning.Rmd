@@ -599,7 +599,7 @@ kbl(scores_Alaska,
 Figure 9 compares the forecasted values for Alaska with the actual values from the test period. The models are unable to reproduce not just the higher peaks, but also miss the troughs. It is likely that our models capture the seasonality of tidal power in Cook Inlet well but not its fluctuations.
 This shows that the wave power at is highly unpredictable, at least at the site of Cook Inlet. Thus, this would require further investigation into other possible sites if we were to consider Alaska as a potential source for tidal energy development.
 
-```{r, fig.cap='9. Comparing Forecasted Values with Actuals - Alaska'}
+```{r, fig.cap='Figure 9. Comparing Forecasted Values with Actuals - Alaska'}
 #actual test data
 alaska_test_df <- tibble(
   date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
@@ -634,7 +634,7 @@ ggplot() +
 
 ## Florida
 
-Start by creating monthly time series objects for Florida and plotting ACF and PACF plots
+From figure 10, we see a significant spike at lag 1 in both ACF and PACF plots - this is similar to our ACF and PACF plots for Maine where tidal power does not show strong correlation with recent months. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal component (supported by Figure 8), suggesting that our 3 chosen models should fit well as they model complex seasonality well. Figure 8 shows that much like Maine, there is random noise that our decomposition did not account for, and that future analyses should include exogenous variables to better forecast tidal power.
 
 ```{r}
 #converting to time series object
@@ -645,21 +645,26 @@ florida_ts_train <- ts(florida_monthly_train_df$monthly_mean_wave_power,
 florida_ts_test <- ts(florida_monthly_test_df$monthly_mean_wave_power,
                      start = c(min(florida_monthly_test_df$Year), min(florida_monthly_test_df$Month)),
                      frequency = 12)
+```
 
+```{r}
 florida_train_plot <- autoplot(florida_ts_train) +
   ggtitle("Monthly Mean Wave Power - Florida (Training)") +
   xlab("Year") + ylab("Wave Power (W/m)")
 plot(florida_train_plot)
+```
 
+```{r}
 #plotting acf and pacf
 florida_train_acf <- ggAcf(florida_ts_train) + ggtitle("ACF - Monthly Wave Power (Florida)")
 florida_train_pacf <- ggPacf(florida_ts_train) + ggtitle("PACF - Monthly Wave Power (Florida)")
 plot_grid(florida_train_acf, florida_train_pacf, ncol = 1)
+```
 
+```{r}
 #decomposing the time series
 florida_train_decomp <- decompose(florida_ts_train)
 autoplot(florida_train_decomp)
-
 ```
 
 >Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the repeating seasonal patterns at lag 12 for the ACF suggest strong yearly seasonality.
