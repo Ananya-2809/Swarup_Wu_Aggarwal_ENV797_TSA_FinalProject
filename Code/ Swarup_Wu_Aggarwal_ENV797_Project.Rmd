@@ -155,7 +155,7 @@ kable(
 
 ```
 
-Here are the first ten rows of our Maine dataset
+Here is the head of our Maine dataset:
 ```{r, fig.cap= 'Head of Mean Monthly Wave Dataset in Maine'}
 head(maine_monthly_df)
 ```
