@@ -38,15 +38,15 @@ library(skimr)
 ```
 
 # Introduction
-## Motivation and Background
+### Motivation and Background
 Our group, composed of students from the Coastal Marine Systems and Energy concentrations within the MEM program, chose to explore tidal power due to its strong relevance to our academic and professional interests. Tidal energy presents a compelling case as a clean and sustainable energy source, producing zero greenhouse gas emissions while avoiding the environmental drawbacks of traditional hydro-power, such as dams and large reservoirs. Beyond its ecological benefits, tidal power boasts a high energy density and efficiency—unlike intermittent sources like wind and solar, ocean currents remain relatively constant, ensuring continuous power generation without heavy reliance on costly storage systems. This reliability makes tidal energy a valuable asset in balancing energy grids and complementing other renewables. Additionally, the predictability of tidal currents enhances its appeal as a stable energy solution. While the U.S. currently lacks commercially operational tidal power sites, growing interest and investment, including pilot projects in Maine and New York, signal its potential as a key player in the renewable energy landscape. (Sources of references: altenergymag.com)   
 
-## Project Objectives and Relevance
+### Project Objectives and Relevance
 In this project, we aim to evaluate and compare tidal power potential across three U.S. sites at varying latitudes and coastal conditions. Our assessment focuses on Wave Energy Flux (measured in watts per square meter), which is calculated by Wave Power Density multiplying by Wave Energy Period. We will analyze seasonal and long-term trends in these time-series datasets, apply predictive modeling using training and testing datasets, and compare forecasting results to determine which site offers the most stable and highest Wave Energy Flux. By doing so, we hope to contribute meaningful insights into the feasibility and optimization of tidal energy as a sustainable power source. (Sources of data: NREL Marine Energy) 
 
 
 # Dataset information
-## Data selection and extraction
+### Data selection and extraction
 We first picked 3 sites/ locations/ areas tend to be some of the locations referred to for its tidal power potential in the general Internet searches. These areas are distinct by latitudes and longitudes, as well as different coasts and climatic environments. These three sites are:  
 - Gulf of Maine (43.68° N, 
 69.77 ° W)   
@@ -66,7 +66,7 @@ With the lat-long of these sites, we extracted raw data of 1979-2010 Wave Energy
 7. Use the top 3 performance models (Arima + Fourier k-4, TBATs. and STL+ETS) for the other 2 sites Wave Energy Flux.  
 8. Compare Wave Energy Flux Results of the 3 sites and determine which site has more potential. 
 
-## Initial Summary Statistics/ Visualizations of the Datasets
+### Initial Summary Statistics/ Visualizations of the Datasets
 We do a preliminary analysis of the three sites based on summary statistics for monthly mean wave power. We see drastic contracts among them, with the Gulf of Maine delivering the most energetic and variable resource, averaging 8,443.4 W/m. On the other hand, Cook Inlet's sheltered basin gives us only ~16.2 W/m of monthly wave power on average. Thus, based on these observations, we first test out forecasting models using the Gulf of Maine site, and then choose the top three performing models on the other two sites for a final comparison of tidal power potential.
 
 
@@ -126,7 +126,7 @@ maine_monthly_df <- maine_daily_df %>%
                         monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
                         monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
 ```
-# Initial Summary Statistics
+### Initial Summary Statistics
 ```{r}
 #combining the three monthly data frames for initial comparison
 combined_monthly_df <- bind_rows(
@@ -816,11 +816,11 @@ kbl(compare_df,
 
 We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE %). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it indeed shows more stability than the Maine forecasts, and thus, could be a good alternative site choice if the forecasting or simulation goal targets more stable, sub-seasonal behavior instead of purely accuracy score. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, which indicates that the one-year ahead forecast did not perform well and was affected by too much random variations/ noise. This is likely due to the geography of the location. Large mountains make incoming winds variable and a more open ocean site would provide more stability in tidal power generation. 
 
-## Limitations and Future Analyses:
+## Limitations and Future Analyses
 Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. Overall, they capture the seasonal patterns of tidal power across all 3 states well. However, they consistenly underestimated peaks in tidal power and this is likely due to the large number of exogenous variables that affect the wave patterns, such as wind speed, sea surface temperature and weather events. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. Future analyses should involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed and aim to forecast to at least 2028, as we prepare for a federal administration that is hopefully more supportive of renewable energy sources like tidal power. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
 
 
-# References and Datasets:
+## References and Datasets
 - Evaluating the present and future potential of tidal power in the U.S. AltEnergyMag. (n.d.). https://www.altenergymag.com/article/2024/10/evaluating-the-present-and-future-potential-of-tidal-power-in-the-us/43464   
 - Lavaa, A. (2023, April 24). Tidal Energy Diagram: The story of tidal power based on diagrams - industrial manufacturing blog. linquip. https://www.linquip.com/blog/tidal-energy-diagram-story-of-tidal-power/   
 - Marine Energy Atlas. Innovative Data Energy Applications. (n.d.). https://maps.nrel.gov/marine-energy-atlas/data-viewer/download?vL=WavePowerMerged&b=%5B%5B-150.717111%2C43.537926%5D%2C%5B-114.418117%2C51.672586%5D%5D   
