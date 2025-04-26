@@ -448,8 +448,7 @@ Given the performance of our 3 chosen models, we proceed with fitting them on Al
 
 ## Alaska
 
-Start by creating monthly time series objects for Alaska and plotting ACF and PACF plots
-```{r}
+```{r, include=FALSE}
 #converting to time series object
 alaska_ts_train <- ts(alaska_monthly_train_df$monthly_mean_wave_power,
                      start = c(min(alaska_monthly_train_df$Year), min(alaska_monthly_train_df$Month)),
@@ -458,35 +457,33 @@ alaska_ts_train <- ts(alaska_monthly_train_df$monthly_mean_wave_power,
 alaska_ts_test <- ts(alaska_monthly_test_df$monthly_mean_wave_power,
                      start = c(min(alaska_monthly_test_df$Year), min(alaska_monthly_test_df$Month)),
                      frequency = 12)
+```
 
+
+```{r}
 alaska_train_plot <- autoplot(alaska_ts_train) +
-  ggtitle("Monthly Mean Wave Power - alaska (Training)") +
+  ggtitle("Monthly Mean Wave Power - Alaska (Training)") +
   xlab("Year") + ylab("Wave Power (W/m)")
 plot(alaska_train_plot)
+```
 
+```{r, Figure 5. ACF and PACF plots of daily and monthly mean wave power in Alaska}
 #plotting acf and pacf
 alaska_train_acf <- ggAcf(alaska_ts_train) + ggtitle("ACF - Monthly Wave Power (Alaska)")
 alaska_train_pacf <- ggPacf(alaska_ts_train) + ggtitle("PACF - Monthly Wave Power (Alaska)")
 plot_grid(alaska_train_acf, alaska_train_pacf, ncol = 1)
 
-#decomposing the time series
-alaska_train_decomp <- decompose(alaska_ts_train)
-autoplot(alaska_train_decomp)
-
-```
-
-```{r, Figure 5. ACF and PACF plots of daily and monthly mean wave power in Alaska}
-#acf plots
-maine_d_acf <- ggAcf(maine_daily_df$daily_mean_wave_power) + ggtitle("ACF - Daily Wave Power (Maine)")
-maine_m_acf <- ggAcf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("ACF - Monthly Wave Power (Maine)")
-
-maine_d_pacf <- ggPacf(maine_daily_df$daily_mean_wave_power) + ggtitle("PACF - Daily Wave Power (Maine)")
-maine_m_pacf <- ggPacf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("PACF - Monthly Wave Power (Maine)")
-
 
 plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
 
 ```
+
+```{r}
+#decomposing the time series
+alaska_train_decomp <- decompose(alaska_ts_train)
+autoplot(alaska_train_decomp)
+```
+
 >Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal autoregressive component with a period of 12 months (SAR(1) with a seasonal lag of 12).
 
 ```{r, include=FALSE}
