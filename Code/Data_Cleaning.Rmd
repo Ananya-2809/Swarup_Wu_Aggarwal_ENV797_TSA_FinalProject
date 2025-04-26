@@ -73,7 +73,6 @@ We do a preliminary analysis of the three sites based on summary statistics for 
 ```{r include=FALSE}
 #Import datasets
 here()
-getwd()
 alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
                       skip = 2,
                       header = TRUE)
