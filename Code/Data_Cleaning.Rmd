@@ -156,6 +156,11 @@ kable(
 
 ```
 
+Here are the first ten rows of our Maine dataset
+```{r, fig.cap= 'Head of Mean Monthly Wave Dataset in Maine'}
+head(maine_monthly_df)
+```
+
 
 # Analysis
 ## Maine
@@ -208,7 +213,7 @@ plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
 ### Preparing the data
 Thus, we will proceed with forecasting for the monthly series. We start by splitting our monthly mean wave power datasets using the 80-20 rule: 80% for training, 20% for testing. Our training dataset for Maine contains mean wave power from January 1979 to December 2003 and our testing dataset for Maine contains mean wave power from January 2004 to December 2010.
 
-```{r }
+```{r, include=FALSE}
 #Create training and test datasets using the 80-20 rule (for monthly data only)
 
 #Training
@@ -228,7 +233,7 @@ maine_monthly_test_df <- maine_monthly_df %>%
 ```
 
 
-```{r}
+```{r, include=FALSE}
 #converting to time series object
 maine_ts_train <- ts(maine_monthly_train_df$monthly_mean_wave_power,
                      start = c(min(maine_monthly_train_df$Year), min(maine_monthly_train_df$Month)),
@@ -246,6 +251,14 @@ We used the decompose() function on our training dataset and performed an additi
 maine_train_decomp <- decompose(maine_ts_train)
 autoplot(maine_train_decomp)
 ```
+
+```{r, include=FALSE}
+adf_maine <- adf.test(maine_ts_train)
+# Print the results
+print(adf_maine)
+```
+
+Lastly, we ran a ADF test on our training dataset on Maine, which produced a p-value of 0.01. Thus, we reject the null hypothesis that the Maine monthly mean wave power series has a unit root and is non-stationary. 
 
 ### Start of forecasting models
 We proceed by setting the forecasting length to be from January 2004 to December 2010 (testing dataset). We will evaluate our forecasts against values found in our testing datasets.
@@ -267,7 +280,7 @@ For forecasting, we trained and tested the following models:
 
 - Neural Network + XREG: Single, hidden-layer neural network (with our training dataset as an external regressor).
 
-```{r}
+```{r, include=FALSE}
 fore_h = length(maine_ts_test) #forecast horizon
 
 #model 1: seasonal naive on original data (base model)
@@ -306,7 +319,7 @@ autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
 
 ```
 
-```{r}
+```{r, include=FALSE}
 # Model 5 Exponential Smoothing
 n_for <- 11
 #played with this, changed to 12, 23, 2 and check if the best model is still the same
@@ -317,7 +330,7 @@ maine_SSES_fore <- forecast(maine_SSES,h=n_for)
 plot(maine_SSES_fore)
 ```
 
-```{r}
+```{r,include=FALSE}
 # Model 6 StructTS
 SS_seas <- StructTS(maine_ts_train,
                     type="BSM",fixed=c(0.1,0.01,0.3,NA)) 
@@ -331,7 +344,7 @@ plot(maine_SS_for)
 ```
 
 
-```{r}
+```{r,include=FALSE}
 maine_ts_train_diff <- diff(maine_ts_train, differences = 1)
 SS_seas <- StructTS(maine_ts_train_diff, type = "BSM", , fixed = c(NA, NA, NA, NA))  # Let all parameters vary
 checkresiduals(SS_seas)
@@ -347,7 +360,7 @@ autoplot(maine_ts_train) +
   ggtitle("TBATS forecast of monthly wave power in Maine")
 ```
 
-```{r}
+```{r,include=FALSE}
 # Model 6 TBATS Model
 maine_train_tbats_fit <- tbats(maine_ts_train)
 
@@ -364,7 +377,7 @@ autoplot(maine_ts_train) +
   ggtitle("TBATS forecast of monthly wave power in Maine")
 ```
 
-```{r}
+```{r,include=FALSE}
 # Model 7 NNETAR Model
 
 maine_train_NN_fit <- nnetar(maine_ts_train,
@@ -391,6 +404,8 @@ autoplot(maine_ts_train) +
 
 Table 1 displays our accuracy metrics for our models.
 
+Judging from the RMSE and MAPE, our 3 best models are STL + ETS, TBATS and ARIMA + Fourier. This is in line with our hypothesis that models that capture the complex seasonality of tidal power would perform best. 
+
 ```{r, fig.cap= 'Table 1. Forecast accuracy scores for Maine monthly mean wave power'}
 #summarizing the scores/results from the above models
 SNAIVE_scores_m <- accuracy(maine_snaive$mean,maine_ts_test)  
@@ -411,7 +426,6 @@ row.names(scores_Maine) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier",
 
 #choose model with lowest RMSE
 best_model_index <- which.min(scores_Maine[,"RMSE"])
-cat("The best model by RMSE is:", row.names(scores_Maine[best_model_index,]))
 
 kbl(scores_Maine, 
       caption = "Forecast Accuracy for Monthly Wave Power - Maine",
@@ -421,6 +435,16 @@ kbl(scores_Maine,
   kable_styling(latex_options="striped", stripe_index = which.min(scores_Maine[,"RMSE"]))
 
 ```
+
+Figure 4 looks at how our models forecast monthly mean wave power for Maine for our top 3 models. We see that all 3 models capture the seasonality of tidal power well. However, they also underestimate its highest peaks on average. This could likely be due to not accounting for the many exogenous variables that can cause spikes in tidal power (powerful rip currents, strong weather storms, sudden changes in wind velocity). Our 3 models are dependable in providing a minimum power generation forecast, which is helpful for energy planners and policymakers who want to understand the cost-benefit analysis of harnessing tidal energy. Additionally, the underestimation of maximum capacity can be beneficial when building power stations as the forecasts can be used to determine safe lower bounds on maximum capacity. 
+```{r, fig.cap='Figure 4. Forecast comparisons of our top 3 models'}
+arima_f_plot <- autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
+stl_plot <- autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
+tbat_plot <- autoplot(tbats_forecast) + ggtitle("TBATS Forecast - Maine") 
+plot_grid(arima_f_plot, stl_plot, tbat_plot, ncol = 1)
+```
+
+Given the performance of our 3 chosen models, we proceed with fitting them on Alaska and Florida.
 
 ## Alaska
 
@@ -453,7 +477,7 @@ autoplot(alaska_train_decomp)
 
 >Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal autoregressive component with a period of 12 months (SAR(1) with a seasonal lag of 12).
 
-```{r}
+```{r, include=FALSE}
 adf_alaska <- adf.test(alaska_ts_train)
 # Print the results
 print(adf_alaska)
@@ -565,7 +589,7 @@ autoplot(florida_train_decomp)
 
 >Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the repeating seasonal patterns at lag 12 for the ACF suggest strong yearly seasonality.
 
-```{r}
+```{r, include=FALSE}
 adf_florida <- adf.test(florida_ts_train)
 # Print the results
 print(adf_florida)
