@@ -774,8 +774,7 @@ ggplot() +
 ```
 
 
-#Conclusion
-##Comparing the three sites
+#Conclusion & Discussion
 
 ```{r}
 #extracting each site’s best model (by RMSE)
@@ -815,10 +814,10 @@ kbl(compare_df,
 
 ```
 
->Observation: We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE%). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it indeed shows more stability than the Maine forecasts, and thus, could be a good alternative site choice if the forcasting or simulation goal targets more stable, subseasonal behaviour instead of purely accuracy score. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, which indicates that the one-year ahead forecast did not perform well and was affected by too much randomn variations/ noise.
+We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE %). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it indeed shows more stability than the Maine forecasts, and thus, could be a good alternative site choice if the forecasting or simulation goal targets more stable, sub-seasonal behavior instead of purely accuracy score. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, which indicates that the one-year ahead forecast did not perform well and was affected by too much random variations/ noise. This is likely due to the geography of the location. Large mountains make incoming winds variable and a more open ocean site would provide more stability in tidal power generation. 
 
->Limitations and Future Analyses:
-- Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. However, there are a lot of other factors that affect the wave patterns, such as wind speed, sea surface temperature, weather events etc. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. So, future analyses would involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
+##Limitations and Future Analyses:
+Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. Overall, they capture the seasonal patterns of tidal power across all 3 states well. However, they consistenly underestimated peaks in tidal power and this is likely due to the large number of exogenous variables that affect the wave patterns, such as wind speed, sea surface temperature and weather events. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. Future analyses should involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed and aim to forecast to at least 2028, as we prepare for a federal administration that is hopefully more supportive of renewable energy sources like tidal power. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
 
 
 # List References and Datasets:
