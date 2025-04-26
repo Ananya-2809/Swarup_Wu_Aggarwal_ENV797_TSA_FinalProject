@@ -1,0 +1,829 @@
+---
+title: "Final_Project Report"
+author: "Ananya, Rosie, Sameer"
+date: "2025-04-04"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+#Set working directory
+#knitr::opts_knit$set(root.dir = "/Users/sameerswarup/Documents/Duke MEM Classes/Spring 2025/Time Series Analysis for Energy/RStudio Outputs/Final_Project")
+
+```
+
+
+
+```{r message= FALSE, include=FALSE}
+#Load libraries
+library(tidyverse)
+library(forecast)
+#library(tseries)
+library(sarima)
+library(lubridate)
+library(Kendall)
+library(outliers)
+library(foreign)
+library(here)
+library(cowplot)
+library(kableExtra)
+library(smooth)
+library(tseries)
+library(vtable)
+library(skimr)
+```
+
+# Introduction
+## Motivation and Background
+Our group, composed of students from the Coastal Marine Systems and Energy concentrations within the MEM program, chose to explore tidal power due to its strong relevance to our academic and professional interests. Tidal energy presents a compelling case as a clean and sustainable energy source, producing zero greenhouse gas emissions while avoiding the environmental drawbacks of traditional hydro-power, such as dams and large reservoirs. Beyond its ecological benefits, tidal power boasts a high energy density and efficiency—unlike intermittent sources like wind and solar, ocean currents remain relatively constant, ensuring continuous power generation without heavy reliance on costly storage systems. This reliability makes tidal energy a valuable asset in balancing energy grids and complementing other renewables. Additionally, the predictability of tidal currents enhances its appeal as a stable energy solution. While the U.S. currently lacks commercially operational tidal power sites, growing interest and investment, including pilot projects in Maine and New York, signal its potential as a key player in the renewable energy landscape. (Sources of references: altenergymag.com)   
+
+## Project Objectives and Relevance
+In this project, we aim to evaluate and compare tidal power potential across three U.S. sites at varying latitudes and coastal conditions. Our assessment focuses on Wave Energy Flux (measured in watts per square meter), which is calculated by Wave Power Density multiplying by Wave Energy Period. We will analyze seasonal and long-term trends in these time-series datasets, apply predictive modeling using training and testing datasets, and compare forecasting results to determine which site offers the most stable and highest Wave Energy Flux. By doing so, we hope to contribute meaningful insights into the feasibility and optimization of tidal energy as a sustainable power source. (Sources of data: NREL Marine Energy) 
+
+
+# Dataset information
+## Data selection and extraction
+We first picked 3 sites/ locations/ areas tend to be some of the locations referred to for its tidal power potential in the general Internet searches. These areas are distinct by latitudes and longitudes, as well as different coasts and climatic environments. These three sites are:  
+- Gulf of Maine (43.68° N, 
+69.77 ° W)   
+- ~ 3 km distance into ocean near Miami, Florida  (25.74 ° N,  80.11 ° W)   
+- Cook Inlet, Alaska (59.37° N, 152.64° W)  
+
+With the lat-long of these sites, we extracted raw data of 1979-2010 Wave Energy Density and Energy period data in  NREL marine energy atlas: http://nrel.gov/marine-energy-atlas/data-viewer  
+
+
+## Data Wrangling & General Steps of Analysis
+1. Calculate the Wave Energy Flux data based on the raw data we extracted.   
+2. Wave Energy Flux datasets for all 3 sites' are aggregated to daily and monthly view (original series).   
+3. Split the current full dataset using 80/20 rule into training and testing datasets.  
+4. Conduct the original time series analysis on all of the sites.  
+5. Run various models to compare predicting/ forecasting performance on the Maine dataset.  
+6. Get the top 3 performing models based on the Maine Wave Energy Flux forecasting
+7. Use the top 3 performance models (Arima + Fourier k-4, TBATs. and STL+ETS) for the other 2 sites Wave Energy Flux.  
+8. Compare Wave Energy Flux Results of the 3 sites and determine which site has more potential. 
+
+## Initial Summary Statistics/ Visualizations of the Datasets
+We do a preliminary analysis of the three sites based on summary statistics for monthly mean wave power. We see drastic contracts among them, with the Gulf of Maine delivering the most energetic and variable resource, averaging 8,443.4 W/m. On the other hand, Cook Inlet's sheltered basin gives us only ~16.2 W/m of monthly wave power on average. Thus, based on these observations, we first test out forecasting models using the Gulf of Maine site, and then choose the top three performing models on the other two sites for a final comparison of tidal power potential.
+
+
+```{r include=FALSE}
+#Import datasets
+here()
+alaska_df <- read.csv("../Data/Alaska_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+florida_df <- read.csv("../Data/Florida_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+maine_df <- read.csv("../Data/Gulf of Maine_combined_output.csv",
+                      skip = 2,
+                      header = TRUE)
+```
+
+
+```{r include=FALSE}
+#Create a column that contains daily mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_daily_df <- alaska_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+
+florida_daily_df <- florida_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+
+maine_daily_df <- maine_df %>% 
+              group_by(Year, Month, Day) %>%
+              summarise(daily_mean_wave_energy = mean(Energy.Period, na.rm = TRUE),
+                        daily_mean_wave_height = mean(Significant.Wave.Height, na.rm = TRUE),
+                        daily_mean_wave_power = mean(Omni.Directional.Wave.Power, na.rm = TRUE))
+```
+
+```{r include=FALSE}
+#Create a column that contains monthly mean energy period, wave power and wave height and compute mean wave energy flux
+alaska_monthly_df <- alaska_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+
+florida_monthly_df <- florida_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+
+maine_monthly_df <- maine_daily_df %>% 
+              group_by(Year, Month) %>%
+              summarise(monthly_mean_wave_energy = mean(daily_mean_wave_energy, na.rm = TRUE),
+                        monthly_mean_wave_height = mean(daily_mean_wave_height, na.rm = TRUE),
+                        monthly_mean_wave_power = mean(daily_mean_wave_power, na.rm = TRUE))
+```
+# Initial Summary Statistics
+```{r}
+#combining the three monthly data frames for initial comparison
+combined_monthly_df <- bind_rows(
+  alaska_monthly_df  %>% mutate(site = "Alaska"),
+  florida_monthly_df %>% mutate(site = "Florida"),
+  maine_monthly_df   %>% mutate(site = "Maine")
+) %>%
+  arrange(site)
+
+monthly_summary <- combined_monthly_df %>%
+  group_by(site) %>%
+  summarise(
+    Mean    = mean(monthly_mean_wave_power, na.rm = TRUE),
+    Median  = median(monthly_mean_wave_power, na.rm = TRUE),
+    SD      = sd(monthly_mean_wave_power, na.rm = TRUE),
+    Min     = min(monthly_mean_wave_power, na.rm = TRUE),
+    Max     = max(monthly_mean_wave_power, na.rm = TRUE)
+  )
+
+kable(
+  monthly_summary,
+  digits = 1,
+  col.names = c("Site","Mean (W/m)","Median (W/m)","SD (W/m)","Min (W/m)","Max (W/m)"),
+  caption = "Summary statistics of monthly mean wave power by site"
+)
+
+```
+
+Here are the first ten rows of our Maine dataset
+```{r, fig.cap= 'Head of Mean Monthly Wave Dataset in Maine'}
+head(maine_monthly_df)
+```
+
+
+# Analysis
+## Maine
+As concluded from the initial summary statistics, we start off with Maine as a test site. The location we chose for Maine is 3 kilometers offshore with reliable wave and wind currents and thus, a good starting point to test our ability to forecast tidal power.
+
+We proceeded with looking at the time series plots for both daily and monthly mean wave power. We also looked at the ACF and PACF plots of both series, so that we can make an informed decision on which time series (daily or monthly) to pursue.
+
+```{r include=FALSE}
+maine_daily_df <- maine_daily_df %>%
+  mutate(date = make_date(Year, Month, Day))
+
+maine_monthly_df <- maine_monthly_df %>%
+  mutate(date = make_date(Year, Month, 1))
+```
+
+From Figure 1, we see that while the daily series provides a more granular view of the fluctuations in mean wave power, it is subject to extreme outliers that can affect our forecasting ability. Additionally, when compared to the monthly series, there is a lot more noise in the graph, making it harder to discern trends.
+
+The monthly series on the other hand shows a clearer seasonal pattern. Further, by averaging out to a monthly series, the impact of outliers is diminished.
+
+```{r, fig.cap='Figure 1. Plots for mean wave power in Maine (Daily and Monthly)'}
+#initial plots
+maine_d_plot <- ggplot(maine_daily_df, aes(x = date, y = daily_mean_wave_power)) +
+  geom_line(color = "steelblue", alpha = 0.5) +
+  labs(title = "Daily Mean Wave Power - Maine", y = "Wave Power (W/m)", x = "") +
+  theme_minimal()
+
+maine_m_plot <- ggplot(maine_monthly_df, aes(x = date, y = monthly_mean_wave_power)) +
+  geom_line(color = "darkgreen") +
+  labs(title = "Monthly Mean Wave Power - Maine", y = "Wave Power (W/m)", x = "") +
+  theme_minimal()
+
+plot_grid(maine_d_plot, maine_m_plot, ncol = 1)
+```
+
+From Figure 2, we see that both ACF and PACF plots for the daily series have a sharp drop-off after lag 1, suggesting that past daily mean wave power values do not carry much signal for future values. For the monthly mean wave power, the ACF and PACF plots shows strong seasonality with the wave pattern. The autocorrelation persists over time, which will be ideal for ARIMA/SARIMA and other seasonal models.
+
+```{r, Figure 2. ACF and PACF plots of daily and monthly mean wave power in Maine}
+#acf plots
+maine_d_acf <- ggAcf(maine_daily_df$daily_mean_wave_power) + ggtitle("ACF - Daily Wave Power (Maine)")
+maine_m_acf <- ggAcf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("ACF - Monthly Wave Power (Maine)")
+
+maine_d_pacf <- ggPacf(maine_daily_df$daily_mean_wave_power) + ggtitle("PACF - Daily Wave Power (Maine)")
+maine_m_pacf <- ggPacf(maine_monthly_df$monthly_mean_wave_power) + ggtitle("PACF - Monthly Wave Power (Maine)")
+
+
+plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
+
+```
+
+### Preparing the data
+Thus, we will proceed with forecasting for the monthly series. We start by splitting our monthly mean wave power datasets using the 80-20 rule: 80% for training, 20% for testing. Our training dataset for Maine contains mean wave power from January 1979 to December 2003 and our testing dataset for Maine contains mean wave power from January 2004 to December 2010.
+
+```{r, include=FALSE}
+#Create training and test datasets using the 80-20 rule (for monthly data only)
+
+#Training
+alaska_monthly_train_df <- alaska_monthly_df %>%
+                          filter(Year < 2004)
+florida_monthly_train_df <- florida_monthly_df %>%
+                          filter(Year < 2004)
+maine_monthly_train_df <- maine_monthly_df %>%
+                          filter(Year < 2004)
+
+alaska_monthly_test_df <- alaska_monthly_df %>%
+                          filter(Year > 2003)
+florida_monthly_test_df <- florida_monthly_df %>%
+                          filter(Year > 2003)
+maine_monthly_test_df <- maine_monthly_df %>%
+                          filter(Year > 2003)
+```
+
+
+```{r, include=FALSE}
+#converting to time series object
+maine_ts_train <- ts(maine_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(maine_monthly_train_df$Year), min(maine_monthly_train_df$Month)),
+                     frequency = 12)
+
+maine_ts_test <- ts(maine_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(maine_monthly_test_df$Year), min(maine_monthly_test_df$Month)),
+                     frequency = 12)
+```
+
+We used the decompose() function on our training dataset and performed an additive deomposition. From Figure 3, we can confirm the strong seasonality seen in mean wave power in Maine. We also see that mean wave power peaked from 1995 to around 2000 in Maine. This could be due to climate and oceanographic factors (wind speed, underwater currents) that warrant a further look. Since tidal energy is subject to a whole host of climate and oceanographic factors, our remainder series shows some significant spikes at irregular intervals which could be caused by specific weather events. Further research into Maine's short-term and long-term weather patterns is recommended for future forecasting projects.
+
+```{r, Figure 3. Decomposition of Maine monthly mean wave power series}
+#decomposing the time series
+maine_train_decomp <- decompose(maine_ts_train)
+autoplot(maine_train_decomp)
+```
+
+```{r, include=FALSE}
+adf_maine <- adf.test(maine_ts_train)
+# Print the results
+print(adf_maine)
+```
+
+Lastly, we ran a ADF test on our training dataset on Maine, which produced a p-value of 0.01. Thus, we reject the null hypothesis that the Maine monthly mean wave power series has a unit root and is non-stationary. 
+
+### Start of forecasting models
+We proceed by setting the forecasting length to be from January 2004 to December 2010 (testing dataset). We will evaluate our forecasts against values found in our testing datasets.
+
+For forecasting, we trained and tested the following models:
+- Seasonal Naïve: Used as a preliminary baseline due to strong seasonal patterns in monthly wave power
+
+- ARIMA + Fourier: Applied using auto.arima() function with a fourier term
+
+- ETS + STL: Implements seasonal trend decomposition (Figure 3) and performs exponential smoothing using stlf() function
+
+- SARIMA: Applied a seasonal ARIMA model (due to strong seasonality present) using the auto.arima() function
+
+- ES: Exponential smoothing to use recent, past values of monthly wave power to forecast future ones
+
+- StructTS: Uses a state-space framework to model unobserved components of monthly tidal series. Applied using a Basic Structural Model (BSM).
+
+- TBATS: Used to model complex seasonal patterns present in tidal power 
+
+- Neural Network + XREG: Single, hidden-layer neural network (with our training dataset as an external regressor).
+
+```{r, include=FALSE}
+fore_h = length(maine_ts_test) #forecast horizon
+
+#model 1: seasonal naive on original data (base model)
+maine_snaive <- snaive(maine_ts_train, h = fore_h)
+autoplot(maine_snaive) + ggtitle("SNAIVE - Maine")
+
+
+#model 2: SARIMA on original data
+maine_sarima_fit <- auto.arima(maine_ts_train)
+print(maine_sarima_fit)
+
+maine_sarima_fore <- forecast(object = maine_sarima_fit, h = fore_h)
+autoplot(maine_sarima_fore) + ggtitle("SARIMA - Maine")
+
+
+#model 3: STL decomposition + ETS
+maine_stlf_ets <- stlf(maine_ts_train, h = fore_h, method = "ets")
+autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
+
+
+#model 4: ARIMA + Fourier terms
+k <- 4  #number of Fourier terms kept at 4, as 5 onwards, the RMSE started increasing
+
+maine_arima_fit <- auto.arima(maine_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(maine_ts_train, 
+                                          K = k))
+
+maine_arima_fore <- forecast(maine_arima_fit,
+                           xreg=fourier(maine_ts_train,
+                                        K = k,
+                                        h = fore_h),
+                           h = fore_h)
+autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
+
+```
+
+```{r, include=FALSE}
+# Model 5 Exponential Smoothing
+n_for <- 11
+#played with this, changed to 12, 23, 2 and check if the best model is still the same
+maine_SSES <- es(maine_ts_train, model="ZZZ", h=n_for, holdout=FALSE)
+checkresiduals(maine_SSES)
+# forecast and plot
+maine_SSES_fore <- forecast(maine_SSES,h=n_for)
+plot(maine_SSES_fore)
+```
+
+```{r,include=FALSE}
+# Model 6 StructTS
+SS_seas <- StructTS(maine_ts_train,
+                    type="BSM",fixed=c(0.1,0.01,0.3,NA)) 
+
+#this function has convergence issues
+checkresiduals(SS_seas)
+
+#Generating forecasts
+maine_SS_for <- forecast(SS_seas,h=n_for)
+plot(maine_SS_for)
+```
+
+
+```{r,include=FALSE}
+maine_ts_train_diff <- diff(maine_ts_train, differences = 1)
+SS_seas <- StructTS(maine_ts_train_diff, type = "BSM", , fixed = c(NA, NA, NA, NA))  # Let all parameters vary
+checkresiduals(SS_seas)
+
+#Generating forecasts
+maine_SS_for <- forecast(SS_seas,h=n_for)
+plot(maine_SS_for)
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(maine_SS_for, series="SS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Maine")
+```
+
+```{r,include=FALSE}
+# Model 6 TBATS Model
+maine_train_tbats_fit <- tbats(maine_ts_train)
+
+tbats_forecast <- forecast(maine_train_tbats_fit, h=fore_h)
+
+#Plot foresting results
+autoplot(tbats_forecast) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(tbats_forecast, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Maine")
+```
+
+```{r,include=FALSE}
+# Model 7 NNETAR Model
+
+maine_train_NN_fit <- nnetar(maine_ts_train,
+                 p=4,
+                 P=1,
+                 xreg=fourier(maine_ts_train, K = 4))
+
+NN_forecast <- forecast(maine_train_NN_fit, 
+                   h=fore_h,
+                   xreg=fourier(maine_ts_train, 
+                                          K = 4, h=fore_h))
+
+
+#Plot foresting results
+autoplot(NN_forecast) +
+  ylab("Monthly Tidal Power") 
+
+
+#Plot model + observed data
+autoplot(maine_ts_train) +
+  autolayer(NN_forecast, series="Neural Network",PI=FALSE)+
+  ylab("Monthly Tidal Power") 
+```
+
+Table 1 displays our accuracy metrics for our models.
+
+Judging from the RMSE and MAPE, our 3 best models are STL + ETS, TBATS and ARIMA + Fourier. This is in line with our hypothesis that models that capture the complex seasonality of tidal power would perform best. 
+
+```{r, fig.cap= 'Table 1. Forecast accuracy scores for Maine monthly mean wave power'}
+#summarizing the scores/results from the above models
+SNAIVE_scores_m <- accuracy(maine_snaive$mean,maine_ts_test)  
+SARIMA_scores_m <- accuracy(maine_sarima_fore$mean,maine_ts_test)  
+ETS_scores_m <- accuracy(maine_stlf_ets$mean,maine_ts_test)  
+ARIMAF_scores_m <- accuracy(maine_arima_fore$mean,maine_ts_test)
+es_scores_m <- accuracy(maine_SS_for$mean,maine_ts_test)
+StructTS_scores_m <- accuracy(maine_SS_for$mean,maine_ts_test)
+TBATS_scores_m <- accuracy(tbats_forecast$mean,maine_ts_test)  
+NN_scores_m <- accuracy(NN_forecast$mean,maine_ts_test) 
+
+scores_Maine <- as.data.frame(
+  rbind(SNAIVE_scores_m, SARIMA_scores_m, ETS_scores_m, ARIMAF_scores_m, es_scores_m, StructTS_scores_m, 
+        TBATS_scores_m, NN_scores_m)
+  )
+row.names(scores_Maine) <- c("SNAIVE", "SARIMA", "STL+ETS", "ARIMA+Fourier", 
+                       "ES", "StructTS", "TBAT", "NN")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores_Maine[,"RMSE"])
+
+kbl(scores_Maine, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Maine",
+      digits = array(5,ncol(scores_Maine))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores_Maine[,"RMSE"]))
+
+```
+
+Figures 4 and 5 look at how our models forecast monthly mean wave power for Maine for our top 3 models, and compares it with actuals. We see that all 3 models capture the seasonality of tidal power well. However, they also underestimate its highest peaks on average. This could likely be due to not accounting for the many exogenous variables that can cause spikes in tidal power (powerful rip currents, strong weather storms, sudden changes in wind velocity). Our 3 models are dependable in providing a minimum power generation forecast, which is helpful for energy planners and policymakers who want to understand the cost-benefit analysis of harnessing tidal energy. Additionally, the underestimation of maximum capacity can be beneficial when building power stations as the forecasts can be used to determine safe lower bounds on maximum capacity. 
+
+```{r, fig.cap='Figure 4. Forecast comparisons of our top 3 models', message=FALSE, echo=FALSE}
+arima_f_plot <- autoplot(maine_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Maine")
+stl_plot <- autoplot(maine_stlf_ets) + ggtitle("STL + ETS Forecast - Maine")
+tbat_plot <- autoplot(tbats_forecast) + ggtitle("TBATS Forecast - Maine") 
+plot_grid(arima_f_plot, stl_plot, tbat_plot, ncol = 1)
+```
+
+```{r, fig.cap='Figure 5. Comparing Forecasted Values with Actuals - Maine', message=FALSE, echo=FALSE}
+#actual test data
+maine_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(maine_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_m <- tibble(
+  date = maine_test_df$date,
+  STL_ETS_m = as.numeric(maine_stlf_ets$mean),
+  ARIMA_Fourier_m = as.numeric(maine_arima_fore$mean),
+  TBATS_m = as.numeric(tbats_forecast$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_m <- forecast_df_m %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = maine_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_m, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Maine",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+
+```
+
+
+Given the performance of our 3 chosen models, we proceed with fitting them on Alaska and Florida.
+
+## Alaska
+
+From figure 7, we see a significant spike at lag 1 in both ACF and PACF plots - this is similar to our ACF and PACF plots for Maine where tidal power does not show strong correlation with recent months. Also, the significant spikes at lag 12 in both ACF and PACF indicate a strong seasonal component (supported by Figure 8), suggesting that our 3 chosen models should fit well as they model complex seasonality well. Figure 8 shows that much like Maine, there is random noise that our decomposition did not account for, and that future analyses should include exogenous variables to better forecast tidal power.
+
+```{r, include=FALSE}
+#converting to time series object
+alaska_ts_train <- ts(alaska_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(alaska_monthly_train_df$Year), min(alaska_monthly_train_df$Month)),
+                     frequency = 12)
+
+alaska_ts_test <- ts(alaska_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(alaska_monthly_test_df$Year), min(alaska_monthly_test_df$Month)),
+                     frequency = 12)
+```
+
+
+```{r, fig.cap='Figure 6. Time Series plot of monthly mean wave power in Alaska'}
+alaska_train_plot <- autoplot(alaska_ts_train) +
+  ggtitle("Monthly Mean Wave Power - Alaska (Training)") +
+  xlab("Year") + ylab("Wave Power (W/m)")
+plot(alaska_train_plot)
+```
+
+```{r,fig.cap='Figure 7. ACF and PACF plots of monthly mean wave power in Alaska'}
+#plotting acf and pacf
+alaska_train_acf <- ggAcf(alaska_ts_train) + ggtitle("ACF - Monthly Wave Power (Alaska)")
+alaska_train_pacf <- ggPacf(alaska_ts_train) + ggtitle("PACF - Monthly Wave Power (Alaska)")
+plot_grid(alaska_train_acf, alaska_train_pacf, ncol = 1)
+
+
+plot_grid(maine_d_acf,maine_d_pacf, maine_m_acf, maine_m_pacf, ncol = 2)
+
+```
+
+```{r, fig.cap='Figure 8. Time series plot of decomposed monthly wave power series (Alaska)'}
+#decomposing the time series
+alaska_train_decomp <- decompose(alaska_ts_train)
+autoplot(alaska_train_decomp)
+```
+
+```{r, include=FALSE}
+adf_alaska <- adf.test(alaska_ts_train)
+# Print the results
+print(adf_alaska)
+```
+
+Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.  
+
+```{r, include=FALSE}
+fore_h_a <- length(alaska_ts_test)
+
+#model 1: STL decomposition + ETS
+alaska_stlf_ets <- stlf(alaska_ts_train, h = fore_h_a, method = "ets")
+autoplot(alaska_stlf_ets) + ggtitle("STL + ETS Forecast - Alaska")
+```
+
+```{r, include=FALSE}
+#Model 2: Arima + Fourier
+k_a <- 6 #Value that gives lowest RMSE - need to justify
+alaska_arima_fit <- auto.arima(alaska_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(alaska_ts_train, 
+                                          K = k_a))
+
+alaska_arima_fore <- forecast(alaska_arima_fit,
+                           xreg=fourier(alaska_ts_train,
+                                        K = k_a,
+                                        h = fore_h_a),
+                           h = fore_h_a)
+autoplot(alaska_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Alaska")
+```
+
+```{r, include=FALSE}
+#Model 3: TBATS
+alaska_train_tbats_fit <- tbats(alaska_ts_train)
+
+tbats_forecast_a <- forecast(alaska_train_tbats_fit, h=fore_h_a)
+
+#Plot foresting results
+autoplot(tbats_forecast_a) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(alaska_ts_train) +
+  autolayer(tbats_forecast_a, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Alaska")
+```
+
+From Table 2, we see significantly lower RMSE and MAPE values, suggesting that perhaps our models are better able to capture monthly mean tidal power trends in Cook Inlet, Alaska. However, Figure 9 paints a different picture.
+```{r, fig.cap='Table 2. Forecast accuracy scores for Maine monthly mean wave power'}
+#summarizing the scores/results from the above models
+ETS_scores_a <- accuracy(alaska_stlf_ets$mean,alaska_ts_test)  
+ARIMAF_scores_a <- accuracy(alaska_arima_fore$mean,alaska_ts_test)
+TBATS_scores_a <- accuracy(tbats_forecast_a$mean,alaska_ts_test)  
+
+scores_Alaska <- as.data.frame(
+  rbind(ETS_scores_a, ARIMAF_scores_a, TBATS_scores_a)
+  )
+row.names(scores_Alaska) <- c("STL+ETS", "ARIMA+Fourier", "TBAT")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores_Alaska[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores_Alaska[best_model_index,]))
+
+kbl(scores_Alaska, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Alaska",
+      digits = array(5,ncol(scores_Alaska))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores_Alaska[,"RMSE"]))
+
+```
+
+Figure 9 compares the forecasted values for Alaska with the actual values from the test period. The models are unable to reproduce not just the higher peaks, but also miss the troughs. It is likely that our models capture the seasonality of tidal power in Cook Inlet well but not its fluctuations.
+This shows that the wave power at is highly unpredictable, at least at the site of Cook Inlet. Thus, this would require further investigation into other possible sites if we were to consider Alaska as a potential source for tidal energy development.
+
+```{r, fig.cap='9. Comparing Forecasted Values with Actuals - Alaska'}
+#actual test data
+alaska_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(alaska_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_a <- tibble(
+  date = maine_test_df$date,
+  STL_ETS_a = as.numeric(alaska_stlf_ets$mean),
+  ARIMA_Fourier_a = as.numeric(alaska_arima_fore$mean),
+  TBATS_a = as.numeric(tbats_forecast_a$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_a <- forecast_df_a %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = alaska_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_a, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Alaska",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
+## Florida
+
+Start by creating monthly time series objects for Florida and plotting ACF and PACF plots
+
+```{r}
+#converting to time series object
+florida_ts_train <- ts(florida_monthly_train_df$monthly_mean_wave_power,
+                     start = c(min(florida_monthly_train_df$Year), min(florida_monthly_train_df$Month)),
+                     frequency = 12)
+
+florida_ts_test <- ts(florida_monthly_test_df$monthly_mean_wave_power,
+                     start = c(min(florida_monthly_test_df$Year), min(florida_monthly_test_df$Month)),
+                     frequency = 12)
+
+florida_train_plot <- autoplot(florida_ts_train) +
+  ggtitle("Monthly Mean Wave Power - Florida (Training)") +
+  xlab("Year") + ylab("Wave Power (W/m)")
+plot(florida_train_plot)
+
+#plotting acf and pacf
+florida_train_acf <- ggAcf(florida_ts_train) + ggtitle("ACF - Monthly Wave Power (Florida)")
+florida_train_pacf <- ggPacf(florida_ts_train) + ggtitle("PACF - Monthly Wave Power (Florida)")
+plot_grid(florida_train_acf, florida_train_pacf, ncol = 1)
+
+#decomposing the time series
+florida_train_decomp <- decompose(florida_ts_train)
+autoplot(florida_train_decomp)
+
+```
+
+>Observations: The significant spike at lag 1 in both ACF and PACF strongly suggests an AR(1) component. Also, the repeating seasonal patterns at lag 12 for the ACF suggest strong yearly seasonality.
+
+```{r, include=FALSE}
+adf_florida <- adf.test(florida_ts_train)
+# Print the results
+print(adf_florida)
+```
+
+>Observations: ADF test returns a p-value of 0.01, which is smaller than our chosen significance level of 0.05. We reject the null hypothesis that the Alaska mean monthly wave power series has a unit root and thus, the series is likely stationary and does not need differencing.
+
+Proceed with using our 3 chosen models on Florida
+
+### Model 1: STL + ETS
+```{r}
+fore_h_f <- length(florida_ts_test)
+
+#model 1: STL decomposition + ETS
+florida_stlf_ets <- stlf(florida_ts_train, h = fore_h_f, method = "ets")
+autoplot(florida_stlf_ets) + ggtitle("STL + ETS Forecast - Florida")
+```
+
+### Model 2: ARIMA + Fourier terms
+```{r}
+#Model 2: Arima + Fourier
+k_f <- 6 #Value that gives lowest RMSE - need to justify
+florida_arima_fit <- auto.arima(florida_ts_train, 
+                             seasonal=FALSE, 
+                             lambda=0,
+                             xreg=fourier(florida_ts_train, 
+                                          K = k_f))
+
+florida_arima_fore <- forecast(florida_arima_fit,
+                           xreg=fourier(florida_ts_train,
+                                        K = k_f,
+                                        h = fore_h_f),
+                           h = fore_h_f)
+autoplot(florida_arima_fore) + ggtitle("ARIMA + Fourier Forecast - Florida")
+```
+
+### Model 3 TBATs
+```{r}
+#Model 3: TBATS
+florida_train_tbats_fit <- tbats(florida_ts_train)
+
+tbats_forecast_f <- forecast(florida_train_tbats_fit, h=fore_h_f)
+
+#Plot foresting results
+autoplot(tbats_forecast_f) +
+  ylab("Monthly Tidal Power") 
+
+#Plot model + observed data
+autoplot(florida_ts_train) +
+  autolayer(tbats_forecast_f, series="TBATS",PI=FALSE)+
+  ylab("Monthly Tidal Power") +
+  ggtitle("TBATS forecast of monthly wave power in Florida")
+```
+
+```{r}
+#summarizing the scores/results from the above models
+ETS_scores_f <- accuracy(florida_stlf_ets$mean,florida_ts_test)  
+ARIMAF_scores_f <- accuracy(florida_arima_fore$mean,florida_ts_test)
+TBATS_scores_f <- accuracy(tbats_forecast_f$mean,florida_ts_test)  
+
+scores_Florida <- as.data.frame(
+  rbind(ETS_scores_f, ARIMAF_scores_f, TBATS_scores_f)
+  )
+row.names(scores_Florida) <- c("STL+ETS", "ARIMA+Fourier", "TBAT")
+
+#choose model with lowest RMSE
+best_model_index <- which.min(scores_Florida[,"RMSE"])
+cat("The best model by RMSE is:", row.names(scores_Florida[best_model_index,]))
+
+kbl(scores_Florida, 
+      caption = "Forecast Accuracy for Monthly Wave Power - Florida",
+      digits = array(5,ncol(scores_Florida))) %>%
+  kable_styling(full_width = FALSE, position = "center", latex_options = "hold_position") %>%
+  #highlight model with lowest RMSE
+  kable_styling(latex_options="striped", stripe_index = which.min(scores_Florida[,"RMSE"]))
+
+```
+
+Figure 7, comparing the forecasted values with the actual Florida wave power numbers, shows that Florida's cycles are much more predictable, especially in the recent few years. The lows, especially, are very well produced by all three methods!
+
+```{r, fig.cap='Figure 7. Comparing Forecasted Values with Actuals - Florida'}
+#actual test data
+florida_test_df <- tibble(
+  date = seq(as.Date("2004-01-01"), by = "month", length.out = fore_h),
+  actual = as.numeric(florida_ts_test)
+)
+
+#forecasted values from our top three models
+forecast_df_f <- tibble(
+  date = florida_test_df$date,
+  STL_ETS_f = as.numeric(florida_stlf_ets$mean),
+  ARIMA_Fourier_f = as.numeric(florida_arima_fore$mean),
+  TBATS_f = as.numeric(tbats_forecast_f$mean),
+)
+
+# Convert to long format for ggplot
+forecast_long_f <- forecast_df_f %>%
+  pivot_longer(-date, names_to = "model", values_to = "forecast")
+
+# Plot all models and actuals
+ggplot() +
+  geom_line(data = florida_test_df, aes(x = date, y = actual), 
+            color = "black", size = 1, linetype = "solid", 
+            alpha = 0.7) +
+  geom_line(data = forecast_long_f, aes(x = date, y = forecast, color = model), 
+            size = 1, alpha = 0.8) +
+  labs(title = "Monthly Wave Power Forecasts - Florida",
+       subtitle = "Comparison of Top 3 Models (2004–2010)",
+       x = "Date", y = "Wave Power (W/m)", color = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
+# Comparing the three sites
+
+```{r}
+#extracting each site’s best model (by RMSE)
+best_maine   <- row.names(scores_Maine)[which.min(scores_Maine$RMSE)]
+best_alaska  <- row.names(scores_Alaska)[which.min(scores_Alaska$RMSE)]
+best_florida <- row.names(scores_Florida)[which.min(scores_Florida$RMSE)]
+
+#pulling out the RMSE & MAPE for those winners
+rmse_maine   <- scores_Maine[best_maine, "RMSE" ]
+mape_maine   <- scores_Maine[best_maine, "MAPE" ]
+rmse_alaska  <- scores_Alaska[best_alaska, "RMSE"]
+mape_alaska  <- scores_Alaska[best_alaska, "MAPE"]
+rmse_florida <- scores_Florida[best_florida, "RMSE"]
+mape_florida <- scores_Florida[best_florida, "MAPE"]
+
+#computing each site’s long-term mean monthly power
+mean_maine   <- mean(maine_monthly_df$monthly_mean_wave_power, na.rm=TRUE)
+mean_alaska  <- mean(alaska_monthly_df$monthly_mean_wave_power, na.rm=TRUE)
+mean_florida <- mean(florida_monthly_df$monthly_mean_wave_power, na.rm=TRUE)
+
+#comparison table
+compare_df <- tibble(
+  Site  = c("Maine","Alaska","Florida"),
+  Best_Model = c(best_maine, best_alaska, best_florida),
+  Mean_Power = c(mean_maine, mean_alaska, mean_florida),
+  RMSE = c(rmse_maine, rmse_alaska, rmse_florida),
+  MAPE  = c(mape_maine, mape_alaska, mape_florida)
+)
+
+
+kbl(compare_df,
+    digits     = 3,
+    col.names  = c("Site","Best Model","Mean Power (W/m)","RMSE","MAPE (%)"),
+    caption    = "Forecast performance by site"
+  ) %>%
+  kable_styling(full_width = FALSE, position = "center", stripe_index = 1)
+
+```
+
+>Observation: We see that Maine not only delivers the highest monthly wave power, but also results in the most reliable forecasts as it has the lowest relative error (MAPE%). Florida forecasts show ~50% error on average, which means that they might be good for a baseline analysis. However, it does show more stability than the Maine forecasts, and thus, could be a good runner-up if we were open to trading some accuracy for more stable subseasonal behaviour. Alaska's Cook Inlet site is highly unpredictable, with a MAPE of 115%, essentially meaning that our one-year ahead forecast could be no better than random guesses!
+
+>Limitations and Future Analyses:
+- Currently our models are purely univariate as we use the monthly mean wave power as a proxy for tidal power potential. However, there are a lot of other factors that affect the wave patterns, such as wind speed, sea surface temperature, weather events etc. These could have significant impacts on the forecasts, especially at highly variable sites. Also, our current dataset spans the time period from 1979-2010, which does not capture the recent climate change impacts. So, future analyses would involve digging up more recent data and redoing our analysis based on that to see how the conditions have changed. Apart from extending our models temporally, we could also incorporate a wider spatial component, wherein we take the wave potential from a defined area rather than point estimates.
+
+
+# List References and Datasets:
+- Evaluating the present and future potential of tidal power in the U.S. AltEnergyMag. (n.d.). https://www.altenergymag.com/article/2024/10/evaluating-the-present-and-future-potential-of-tidal-power-in-the-us/43464   
+- Lavaa, A. (2023, April 24). Tidal Energy Diagram: The story of tidal power based on diagrams - industrial manufacturing blog. linquip. https://www.linquip.com/blog/tidal-energy-diagram-story-of-tidal-power/   
+- Marine Energy Atlas. Innovative Data Energy Applications. (n.d.). https://maps.nrel.gov/marine-energy-atlas/data-viewer/download?vL=WavePowerMerged&b=%5B%5B-150.717111%2C43.537926%5D%2C%5B-114.418117%2C51.672586%5D%5D   
